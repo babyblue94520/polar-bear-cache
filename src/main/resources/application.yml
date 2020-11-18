@@ -8,4 +8,5 @@ spring:
     timeout: 10000
 logging:
   level:
-    pers.clare: debug
+    root: info
+#    pers.clare: trace

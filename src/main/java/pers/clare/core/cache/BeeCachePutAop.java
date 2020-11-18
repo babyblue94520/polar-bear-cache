@@ -4,7 +4,6 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
@@ -21,10 +20,7 @@ import org.springframework.util.StringUtils;
 @Aspect
 @Order(Integer.MAX_VALUE)
 @Component
-public class CachePutAop {
-    @Autowired
-    private BeeCacheManager cacheManager;
-
+public class BeeCachePutAop {
     private ExpressionParser parser = new SpelExpressionParser();
 
     @Before("@annotation(org.springframework.cache.annotation.CachePut)")
@@ -46,12 +42,7 @@ public class CachePutAop {
             key = String.valueOf(parser.parseExpression(key).getValue(context));
         }
         for (String name : cacheNames) {
-            BeeCache cache = cacheManager.getCache(name);
-            if (cache == null) {
-                cacheManager.clearNotify(name, key);
-            } else {
-                cache.evictNotify(key);
-            }
+            BeeCacheContext.onlyClearNotify(name, key);
         }
     }
 }

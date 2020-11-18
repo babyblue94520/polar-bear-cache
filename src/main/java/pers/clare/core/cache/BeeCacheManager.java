@@ -6,7 +6,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.cache.CacheManager;
 import pers.clare.core.lock.IdLock;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +21,9 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     protected static final int idLength = 13;
     protected static final int eventIndex = 14;
 
-    protected final ConcurrentMap<String, BeeCache> cacheMap = new ConcurrentHashMap<>(16);
+    protected static final ConcurrentMap<String, BeeCache> cacheMap = new ConcurrentHashMap<>(16);
+
+    private static final ConcurrentMap<String, BeeCache> tempMap = new ConcurrentHashMap<>(16);
 
     protected final IdLock<Object> locks = new IdLock<>() {
     };
@@ -30,7 +31,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     private final BeeCacheMQService beeCacheMQService;
 
     {
-        resetId();
+        BeeCacheContext.setManager(this);
     }
 
     public BeeCacheManager(BeeCacheMQService beeCacheMQService) {
@@ -51,7 +52,10 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     @Override
     public void run(String... args) {
         if (beeCacheMQService == null) return;
-        ask();
+        if (id == null) {
+            resetId();
+            ask();
+        }
     }
 
     private void resetId() {
@@ -67,7 +71,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     private void parse(String data) {
         log.debug(data);
         char[] cs = data.toCharArray();
-        if (cs.length > eventIndex) {
+        if (id != null && cs.length > eventIndex) {
             switch (cs[idLength]) {
                 case initSplit:
                     if (isMe(cs)) return;
@@ -143,7 +147,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     private void parseEvictEvent(char[] cs, int offset) {
         int l = cs.length;
         if (l == offset) {
-            onlyClearAll();
+            onlyClear();
         } else {
             String name = null;
             char c;
@@ -152,7 +156,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
                 c = cs[i];
                 if (c == eventSplit) {
                     name = new String(cs, offset, i - offset);
-                    offset = i + 1;
+                    offset = ++i;
                     break;
                 }
             }
@@ -163,7 +167,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
             if (i == l) {
                 onlyClear(name);
             } else {
-                onlyEvict(name, new String(cs, offset, l - offset));
+                onlyClear(name, new String(cs, offset, l - offset));
             }
         }
     }
@@ -181,7 +185,6 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     ) {
         if (beeCacheMQService == null) return;
         beeCacheMQService.send(id + idSplit + name + eventSplit + key);
-
     }
 
     /**
@@ -194,7 +197,6 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     ) {
         if (beeCacheMQService == null) return;
         beeCacheMQService.send(id + idSplit + name);
-
     }
 
     /**
@@ -203,25 +205,46 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     void clearNotify() {
         if (beeCacheMQService == null) return;
         beeCacheMQService.send(id + idSplit);
-
     }
 
     @Override
     public BeeCache getCache(String name) {
         BeeCache cache = cacheMap.get(name);
         if (cache != null) return cache;
-        String duration = findDuration(name);
         synchronized (locks.getLock(name)) {
             cache = cacheMap.get(name);
             if (cache != null) return cache;
-            if (duration == null) {
-                cache = new BeeCache(this, name);
-            } else {
-                cache = new BusyBeeCache(this, name, Duration.parse(duration).toMillis());
-            }
+            cache = createCache(name);
             cacheMap.put(name, cache);
+            tempMap.remove(name);
         }
         return cache;
+    }
+
+    /**
+     * cache 可能会有不同的 manager 建构
+     * 所以非 Spring Aop 使用时，需建立 temp cache 来执行方法
+     * 避免影响原有的使用
+     *
+     * @param name
+     * @return
+     */
+    public BeeCache getCacheOrTemp(String name) {
+        BeeCache cache = cacheMap.get(name);
+        if (cache != null) return cache;
+        return getTemp(name);
+    }
+
+    private BeeCache getTemp(String name) {
+        BeeCache cache = tempMap.get(name);
+        if (cache != null) return cache;
+        cache = new TempBeeCache(this, name);
+        tempMap.put(name, cache);
+        return cache;
+    }
+
+    protected BeeCache createCache(String name) {
+        return new BasicBeeCache(this, name);
     }
 
     @Override
@@ -229,31 +252,30 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
         return Collections.unmodifiableSet(this.cacheMap.keySet());
     }
 
-
     /**
      * 純粹清除
      *
      * @param name
      * @param key
      */
-    public void evict(
+    public void clear(
             String name
-            , Object key
+            , String key
     ) {
         if (name == null || key == null) return;
-        getCache(name).evict(key);
+        getCacheOrTemp(name).evict(key);
     }
 
     /**
      * @param name
      * @param key
      */
-    public void onlyEvict(
+    public void onlyClear(
             String name
             , String key
     ) {
         if (name == null || key == null) return;
-        getCache(name).onlyEvict(key);
+        getCacheOrTemp(name).onlyEvict(key);
         log.debug("clear {} {}", name, key);
     }
 
@@ -266,7 +288,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
             String name
     ) {
         if (name == null) return;
-        getCache(name).clear();
+        getCacheOrTemp(name).clear();
     }
 
     /**
@@ -278,38 +300,66 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
             String name
     ) {
         if (name == null) return;
-        getCache(name).onlyClear();
+        getCacheOrTemp(name).onlyClear();
         log.debug("clear {}", name);
     }
 
     /**
      * 純粹清除全部
      */
-    public void clearAll() {
-        onlyClearAll();
+    public void clear() {
+        onlyClear();
         clearNotify();
     }
 
     /**
      * 純粹清除全部
      */
-    public void onlyClearAll() {
+    public void onlyClear() {
         Collection<String> names = getCacheNames();
         for (String name : names) {
-            getCache(name).onlyClear();
+            getCacheOrTemp(name).onlyClear();
         }
     }
 
-    private String findDuration(String name) {
-        char[] cs = name.toCharArray();
-        Integer index = null;
-        for (int i = 0, l = cs.length - 1; i < l; i++) {
-            if (cs[i] == ' ') {
-                index = i + 1;
-                break;
+    /**
+     * 清除相依的緩存
+     */
+    void clearDependents(
+            String name
+    ) {
+        Collection<BeeCacheDepend> dependents = BeeCacheDependencies.find(name);
+        if (dependents == null) {
+            return;
+        }
+        BeeCache cache;
+        for (BeeCacheDepend dependent : dependents) {
+            cache = getCacheOrTemp(dependent.getName());
+            if (cache == null) continue;
+            cache.onlyClear();
+        }
+    }
+
+    /**
+     * 清除相依的緩存
+     */
+    void clearDependents(
+            String name
+            , String key
+    ) {
+        Collection<BeeCacheDepend> dependents = BeeCacheDependencies.find(name);
+        if (dependents == null) {
+            return;
+        }
+        BeeCache cache;
+        for (BeeCacheDepend dependent : dependents) {
+            cache = getCacheOrTemp(dependent.getName());
+            if (cache == null) continue;
+            if (dependent.getAllEntries()) {
+                cache.onlyClear();
+            } else {
+                cache.onlyEvict(key);
             }
         }
-        if (index == null) return null;
-        return new String(cs, index, cs.length - index);
     }
 }

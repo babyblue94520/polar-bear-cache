@@ -1,9 +1,9 @@
 package pers.clare.core.mq;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import pers.clare.core.json.JsonUtil;
 import pers.clare.core.json.RewriteTypeReference;
 
@@ -11,6 +11,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @param <T>
@@ -29,27 +31,53 @@ public abstract class AbstractGenericMQService<T> implements GenericMQService<T>
 
     private MQService mqService;
 
+    public static final ExecutorService mqExecutor = Executors.newFixedThreadPool(5
+            , new ThreadFactoryBuilder().setNameFormat("mq-%d").build());
 
-    @Autowired
-    private ThreadPoolTaskExecutor taskExecutor;
-
-    public AbstractGenericMQService(String topic) {
-        this(topic, true);
+    public AbstractGenericMQService(
+            String topic
+    ) {
+        this(null, topic, true);
     }
 
-    public AbstractGenericMQService(String topic, boolean registerListener) {
+    public AbstractGenericMQService(
+            String topic
+            , boolean registerListener
+    ) {
+        this(null, topic, registerListener);
+    }
+
+    public AbstractGenericMQService(
+            MQService mqService
+            , String topic
+    ) {
+        this(mqService, topic, true);
+    }
+
+    public AbstractGenericMQService(
+            MQService mqService
+            , String topic
+            , boolean registerListener
+    ) {
+        this.mqService = mqService;
         this.topic = topic;
         this.registerListener = registerListener;
+
         Type t = ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         string = String.class.equals(t);
         this.type = string ? null : new RewriteTypeReference<T>(t) {
         };
+        registerListener();
     }
 
-
-    @Autowired(required = false)
-    public void init(MQService mqService) {
+    @Autowired
+    public void setMQService(MQService mqService) {
+        if (this.mqService != null) return;
         this.mqService = mqService;
+        this.registerListener();
+    }
+
+    private void registerListener() {
         if (mqService == null) return;
         if (registerListener) {
             mqService.listener(this.topic, (body) -> {
@@ -59,21 +87,26 @@ public abstract class AbstractGenericMQService<T> implements GenericMQService<T>
     }
 
     private void receive(String body) {
-        if (body == null || listeners.size() == 0) return;
+        if (body == null || listeners.size() == 0) {
+            log.trace("body is null or not listener");
+            return;
+        }
         try {
             T data = string ? (T) body : JsonUtil.decode(body, this.type);
+            long time = System.currentTimeMillis();
+            log.trace("{} body:{}", time, body);
             for (GenericReceiveListener<T> listener : listeners) {
-                taskExecutor.execute(() -> {
+                mqExecutor.execute(() -> {
                     try {
-                        log.trace(body);
                         listener.accept(body, data);
+                        log.trace("{} {}ms", time, System.currentTimeMillis() - time);
                     } catch (Exception e) {
-                        log.error(e.getMessage(), e);
+                        log.error("{} {}", time, e.getMessage());
                     }
                 });
             }
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("{} body:{}", e.getMessage(), body);
         }
     }
 

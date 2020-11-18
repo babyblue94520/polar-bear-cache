@@ -1,6 +1,7 @@
 package pers.clare.core.cache;
 
 import lombok.extern.log4j.Log4j2;
+import org.springframework.cache.Cache;
 
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -8,7 +9,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
-public class BusyBeeCache extends BeeCache {
+public class BusyBeeCache extends BasicBeeCache {
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     private final long effectiveTime;
@@ -28,8 +29,8 @@ public class BusyBeeCache extends BeeCache {
     }
 
     @Override
-    public ValueWrapper get(Object key) {
-        BusyValueWrapper value = (BusyValueWrapper) super.get(key);
+    public Cache.ValueWrapper get(Object key) {
+        BusyBeeCacheValueWrapper value = (BusyBeeCacheValueWrapper) super.get(key);
         if (value == null) return null;
         long now = System.currentTimeMillis();
         if (value.getValidTime() > now) {
@@ -42,8 +43,8 @@ public class BusyBeeCache extends BeeCache {
     }
 
     @Override
-    protected ValueWrapper createValueWrapper(Object value) {
-        return new BusyValueWrapper(value, System.currentTimeMillis() + effectiveTime);
+    protected Cache.ValueWrapper createValueWrapper(Object value) {
+        return new BusyBeeCacheValueWrapper(value, System.currentTimeMillis() + effectiveTime);
     }
 
     /**
@@ -54,9 +55,9 @@ public class BusyBeeCache extends BeeCache {
         if (oldSize == 0) return;
         long now = System.currentTimeMillis();
         long t = System.currentTimeMillis();
-        for (Map.Entry<Object, ValueWrapper> entry : store.entrySet()) {
+        for (Map.Entry<Object, Cache.ValueWrapper> entry : store.entrySet()) {
             try {
-                if (((BusyValueWrapper) entry.getValue()).getValidTime() < now) {
+                if (((BusyBeeCacheValueWrapper) entry.getValue()).getValidTime() < now) {
                     store.remove(entry.getKey());
                 }
             } catch (Exception e) {

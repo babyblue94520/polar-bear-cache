@@ -10,8 +10,9 @@ import pers.clare.core.mq.MQService;
 import java.util.function.Consumer;
 
 @Log4j2
-@Service
+@Service(RedisMQService.NAME)
 public class RedisMQService implements MQService {
+    public static final String NAME = "redisMQService";
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
