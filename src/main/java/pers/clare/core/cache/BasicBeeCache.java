@@ -1,19 +1,22 @@
 package pers.clare.core.cache;
 
+import io.swagger.models.auth.In;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.cache.Cache;
 
-import java.util.Collections;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 @Log4j2
 public class BasicBeeCache implements BeeCache {
-    protected final ConcurrentMap<Object, Cache.ValueWrapper> store = new ConcurrentHashMap<>();
+    protected final ConcurrentMap<String, Cache.ValueWrapper> store = new ConcurrentHashMap<>();
     protected final BeeCacheManager manager;
     protected final String name;
+
+    protected final Function<String, Object> refreshWhenEvictHandler;
+    protected final Function<Set<String>, Map<String, Object>> refreshWhenClearHandler;
 
     protected BasicBeeCache(
             BeeCacheManager manager
@@ -21,6 +24,8 @@ public class BasicBeeCache implements BeeCache {
     ) {
         this.name = name;
         this.manager = manager;
+        this.refreshWhenEvictHandler = manager.refreshWhenEvictHandlers.get(name);
+        this.refreshWhenClearHandler = manager.refreshWhenClearHandlers.get(name);
     }
 
     @Override
@@ -105,18 +110,31 @@ public class BasicBeeCache implements BeeCache {
             if (cs[0] == 'r' && cs[1] == 'e' && cs[2] == 'g' && cs[3] == 'e' && cs[4] == 'x' && cs[5] == ':') {
                 Pattern pattern = Pattern.compile(new String(cs, 6, cs.length - 6));
                 for (Object k : store.keySet()) {
-                    if (pattern.matcher(k.toString()).find()) {
-                        store.remove(k);
-                        manager.clearDependents(name, key);
-                        log.debug("evict name:{} key:{}", name, k);
+                    String str = k.toString();
+                    if (pattern.matcher(str).find()) {
+                        remove(str);
                     }
                 }
                 return;
             }
         }
-        store.remove(key);
+        remove(key);
+    }
+
+    protected void remove(String key) {
+        if (refreshWhenEvictHandler == null) {
+            store.remove(key);
+            log.debug("evict name:{} key:{}", name, key);
+        } else {
+            Object value = refreshWhenEvictHandler.apply(key);
+            if (value == null) {
+                store.remove(key);
+            } else {
+                store.put(key, createValueWrapper(value));
+            }
+            log.debug("evict refresh name:{} key:{}", name, key);
+        }
         manager.clearDependents(name, key);
-        log.debug("evict name:{} key:{}", name, key);
     }
 
     /**
@@ -142,8 +160,29 @@ public class BasicBeeCache implements BeeCache {
     }
 
     private void doClear() {
-        store.clear();
+        if (refreshWhenClearHandler == null) {
+            store.clear();
+            log.debug("clear name:{}", name);
+        } else if (store.size() > 0) {
+            Set<String> keys = store.keySet();
+            Map<String, Object> values = refreshWhenClearHandler.apply(keys);
+            if (values == null || values.size() == 0) {
+                store.clear();
+            } else {
+                Map.Entry<String, ValueWrapper> entry;
+                Object value;
+                for (Iterator<Map.Entry<String, ValueWrapper>> iterator = store.entrySet().iterator(); iterator.hasNext(); ) {
+                    entry = iterator.next();
+                    value = values.get(entry.getKey());
+                    if (value == null) {
+                        iterator.remove();
+                    } else {
+                        entry.setValue(createValueWrapper(value));
+                    }
+                }
+            }
+            log.debug("clear refresh name:{}", name);
+        }
         manager.clearDependents(name);
-        log.debug("clear name:{}", name);
     }
 }

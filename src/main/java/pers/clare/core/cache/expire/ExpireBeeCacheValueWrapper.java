@@ -1,4 +1,4 @@
-package pers.clare.core.cache;
+package pers.clare.core.cache.expire;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import org.springframework.cache.Cache;
 
 @Getter
 @AllArgsConstructor
-public class BusyBeeCacheValueWrapper implements Cache.ValueWrapper {
+public class ExpireBeeCacheValueWrapper implements Cache.ValueWrapper {
     private final Object value;
     @Setter
     private long validTime;

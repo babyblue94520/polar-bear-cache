@@ -8,8 +8,11 @@ import pers.clare.core.lock.IdLock;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 @Log4j2
 public class BeeCacheManager implements CacheManager, CommandLineRunner, InitializingBean {
@@ -21,9 +24,31 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
     protected static final int idLength = 13;
     protected static final int eventIndex = 14;
 
+    private static final ConcurrentMap<String, BeeCache> tempMap = new ConcurrentHashMap<>(16);
+
     protected static final ConcurrentMap<String, BeeCache> cacheMap = new ConcurrentHashMap<>(16);
 
-    private static final ConcurrentMap<String, BeeCache> tempMap = new ConcurrentHashMap<>(16);
+    protected static final ConcurrentMap<String, Function<String, Object>> refreshWhenEvictHandlers = new ConcurrentHashMap<>(16);
+
+    protected static final ConcurrentMap<String, Function<Set<String>, Map<String, Object>>> refreshWhenClearHandlers = new ConcurrentHashMap<>(16);
+
+    public static void clearAll() {
+        cacheMap.values().forEach(BeeCache::onlyClear);
+        tempMap.values().forEach(BeeCache::onlyClear);
+    }
+
+    public static void refreshWhenEvict(String cacheName, Function<String, Object> handler) {
+        if (refreshWhenEvictHandlers.put(cacheName, handler) != null) {
+            throw new RuntimeException(String.format("%s evict refresh handler already exists", cacheName));
+        }
+    }
+
+    public static void refreshWhenClear(String cacheName, Function<Set<String>, Map<String, Object>> handler) {
+        if (refreshWhenClearHandlers.put(cacheName, handler) != null) {
+            throw new RuntimeException(String.format("%s clear refresh handler already exists", cacheName));
+        }
+    }
+
 
     protected final IdLock<Object> locks = new IdLock<>() {
     };

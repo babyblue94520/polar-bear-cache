@@ -4,7 +4,9 @@ import java.util.function.Consumer;
 
 public interface MQService {
 
-    public void send(String topic, String body);
+    void send(String topic, String body);
 
-    public void listener(String topic, Consumer<String> listener);
+    void listener(String topic, Consumer<String> listener);
+
+    void onConnected(Runnable runnable);
 }

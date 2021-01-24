@@ -1,11 +1,14 @@
 package pers.clare.core.cache;
 
-public abstract class BeeCacheContext {
+public class BeeCacheContext {
     private static BeeCacheManager manager;
 
+    BeeCacheContext(){};
+
     static void setManager(BeeCacheManager manager) {
-        if (BeeCacheContext.manager != null) return;
-        BeeCacheContext.manager = manager;
+        if (BeeCacheContext.manager == null) {
+            BeeCacheContext.manager = manager;
+        }
     }
 
     public static <T> T get(String name, Object key, Class<T> clazz) {

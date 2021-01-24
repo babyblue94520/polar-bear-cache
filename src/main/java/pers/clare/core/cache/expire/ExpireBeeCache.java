@@ -1,7 +1,9 @@
-package pers.clare.core.cache;
+package pers.clare.core.cache.expire;
 
 import lombok.extern.log4j.Log4j2;
 import org.springframework.cache.Cache;
+import pers.clare.core.cache.BasicBeeCache;
+import pers.clare.core.cache.BeeCacheManager;
 
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -9,12 +11,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
-public class BusyBeeCache extends BasicBeeCache {
+public class ExpireBeeCache extends BasicBeeCache {
+    private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
-    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    private final long effectiveTime;
+    protected final long effectiveTime;
 
-    protected BusyBeeCache(BeeCacheManager manager, String name, long effectiveTime) {
+    protected ExpireBeeCache(BeeCacheManager manager, String name, long effectiveTime) {
         super(manager, name);
         // 最低時間 1 分鐘
         long delay = 60 * 1000;
@@ -30,11 +32,10 @@ public class BusyBeeCache extends BasicBeeCache {
 
     @Override
     public Cache.ValueWrapper get(Object key) {
-        BusyBeeCacheValueWrapper value = (BusyBeeCacheValueWrapper) super.get(key);
+        ExpireBeeCacheValueWrapper value = (ExpireBeeCacheValueWrapper) super.get(key);
         if (value == null) return null;
         long now = System.currentTimeMillis();
         if (value.getValidTime() > now) {
-            value.setValidTime(now + effectiveTime);
             return value;
         } else {
             store.remove(key);
@@ -44,20 +45,20 @@ public class BusyBeeCache extends BasicBeeCache {
 
     @Override
     protected Cache.ValueWrapper createValueWrapper(Object value) {
-        return new BusyBeeCacheValueWrapper(value, System.currentTimeMillis() + effectiveTime);
+        return new ExpireBeeCacheValueWrapper(value, System.currentTimeMillis() + effectiveTime);
     }
 
     /**
      *
      */
-    private void expire() {
+    protected void expire() {
         long oldSize = store.size();
         if (oldSize == 0) return;
         long now = System.currentTimeMillis();
         long t = System.currentTimeMillis();
-        for (Map.Entry<Object, Cache.ValueWrapper> entry : store.entrySet()) {
+        for (Map.Entry<String, Cache.ValueWrapper> entry : store.entrySet()) {
             try {
-                if (((BusyBeeCacheValueWrapper) entry.getValue()).getValidTime() < now) {
+                if (((ExpireBeeCacheValueWrapper) entry.getValue()).getValidTime() < now) {
                     store.remove(entry.getKey());
                 }
             } catch (Exception e) {
@@ -66,5 +67,4 @@ public class BusyBeeCache extends BasicBeeCache {
         }
         log.debug("{} > {} expire {}ms", oldSize, store.size(), System.currentTimeMillis() - t);
     }
-
 }

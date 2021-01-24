@@ -5,6 +5,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import pers.clare.core.cache.BeeCacheManager;
 import pers.clare.demo.data.User;
 
 import static pers.clare.demo.config.CacheKeyAware.UserCacheKey;
@@ -13,9 +14,13 @@ import static pers.clare.demo.config.CacheKeyAware.UserManager;
 @Service
 public class UserService {
 
+    {
+        BeeCacheManager.refreshWhenEvict(UserCacheKey, (key) -> find(Integer.valueOf(key)));
+    }
+
     @Cacheable(
             cacheNames = UserCacheKey
-            ,cacheManager = UserManager
+            , cacheManager = UserManager
             , key = "#id"
             , condition = "#id != null"
             , unless = "#result==null"
@@ -26,7 +31,7 @@ public class UserService {
 
     @CachePut(
             cacheNames = UserCacheKey
-            ,cacheManager = UserManager
+            , cacheManager = UserManager
             , key = "#id"
             , condition = "#id != null"
             , unless = "#result==null"
@@ -42,7 +47,7 @@ public class UserService {
 
     @CacheEvict(
             cacheNames = UserCacheKey
-            ,cacheManager = UserManager
+            , cacheManager = UserManager
             , key = "#id"
             , condition = "#id != null"
     )
