@@ -1,5 +1,9 @@
 package pers.clare.core.lock;
 
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -13,6 +17,7 @@ public abstract class IdLock<T> {
     private Map<Object, T> locks = new HashMap<>();
 
     private Class<T> clazz;
+    private Map<Integer, Constructor<T>> constructors = new HashMap<>();
 
     {
         Type type = this.getClass().getGenericSuperclass();
@@ -20,6 +25,10 @@ public abstract class IdLock<T> {
             clazz = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
         } else {
             clazz = (Class<T>) Object.class;
+        }
+
+        for (Constructor constructor : clazz.getDeclaredConstructors()) {
+            constructors.put(constructor.getParameterCount(), constructor);
         }
     }
 
@@ -29,13 +38,13 @@ public abstract class IdLock<T> {
      * @param id
      * @return
      */
-    public T getLock(Object id) {
+    public T getLock(Object id, Object... parameters) {
         T lock = locks.get(id);
         if (lock != null) return lock;
         synchronized (locks) {
             lock = locks.get(id);
             if (lock != null) return lock;
-            locks.put(id, lock = newInstance());
+            locks.put(id, lock = newInstance(parameters));
         }
         return lock;
     }
@@ -46,9 +55,9 @@ public abstract class IdLock<T> {
         }
     }
 
-    protected T newInstance() {
+    protected T newInstance(Object[] parameters) {
         try {
-            return clazz.getDeclaredConstructor().newInstance();
+            return constructors.get(parameters.length).newInstance(parameters);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
