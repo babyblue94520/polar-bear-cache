@@ -9,10 +9,11 @@ import pers.clare.core.cache.expire.ExpireBeeCacheManager;
 public class BusyBeeCacheManager extends ExpireBeeCacheManager {
 
     public BusyBeeCacheManager(
-            BeeCacheMQService beeCacheMQService
+            String topic
+            , BeeCacheMQService beeCacheMQService
             , String duration
     ) {
-        super(beeCacheMQService, duration);
+        super(topic + ".busy", beeCacheMQService, duration);
     }
 
     @Override

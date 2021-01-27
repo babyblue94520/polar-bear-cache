@@ -32,10 +32,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
 
     protected static final ConcurrentMap<String, Function<Set<String>, Map<String, Object>>> refreshWhenClearHandlers = new ConcurrentHashMap<>(16);
 
-    public static void clearAll() {
-        cacheMap.values().forEach(BeeCache::onlyClear);
-        tempMap.values().forEach(BeeCache::onlyClear);
-    }
+    private static Runnable connectedHandler;
 
     public static void refreshWhenEvict(String cacheName, Function<String, Object> handler) {
         if (refreshWhenEvictHandlers.put(cacheName, handler) != null) {
@@ -49,6 +46,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
         }
     }
 
+    protected final String topic;
 
     protected final IdLock<Object> locks = new IdLock<>() {
     };
@@ -59,19 +57,27 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
         BeeCacheContext.setManager(this);
     }
 
-    public BeeCacheManager(BeeCacheMQService beeCacheMQService) {
+    public BeeCacheManager(String topic, BeeCacheMQService beeCacheMQService) {
+        this.topic = topic;
         this.beeCacheMQService = beeCacheMQService;
     }
 
     public void afterPropertiesSet() {
         if (beeCacheMQService == null) return;
-        beeCacheMQService.addListener((origin, data) -> {
+        beeCacheMQService.addListener(topic, (data) -> {
             try {
                 parse(data);
             } catch (Exception e) {
                 log.error(e.getMessage());
             }
         });
+        if (connectedHandler == null) {
+            connectedHandler = () -> {
+                cacheMap.values().forEach(BeeCache::onlyClear);
+                tempMap.values().forEach(BeeCache::onlyClear);
+            };
+            beeCacheMQService.onConnected(connectedHandler);
+        }
     }
 
     @Override
@@ -155,14 +161,14 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
      * 詢問所有服務ID，來解決ID衝突
      */
     private void ask() {
-        beeCacheMQService.send(id + initSplit + BeeAction.ASK);
+        beeCacheMQService.send(topic, id + initSplit + BeeAction.ASK);
     }
 
     /**
      * 回復ID
      */
     private void replay() {
-        beeCacheMQService.send(id + initSplit + BeeAction.REPLY + id);
+        beeCacheMQService.send(topic, id + initSplit + BeeAction.REPLY + id);
     }
 
     /**
@@ -209,7 +215,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
             , String key
     ) {
         if (beeCacheMQService == null) return;
-        beeCacheMQService.send(id + idSplit + name + eventSplit + key);
+        beeCacheMQService.send(topic, id + idSplit + name + eventSplit + key);
     }
 
     /**
@@ -221,7 +227,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
             String name
     ) {
         if (beeCacheMQService == null) return;
-        beeCacheMQService.send(id + idSplit + name);
+        beeCacheMQService.send(topic, id + idSplit + name);
     }
 
     /**
@@ -229,7 +235,7 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
      */
     void clearNotify() {
         if (beeCacheMQService == null) return;
-        beeCacheMQService.send(id + idSplit);
+        beeCacheMQService.send(topic, id + idSplit);
     }
 
     @Override

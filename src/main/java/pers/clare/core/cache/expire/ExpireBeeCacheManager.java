@@ -13,10 +13,11 @@ public class ExpireBeeCacheManager extends BeeCacheManager {
     protected final long effectiveTime;
 
     public ExpireBeeCacheManager(
-            BeeCacheMQService beeCacheMQService
+            String topic
+            , BeeCacheMQService beeCacheMQService
             , String duration
     ) {
-        super(beeCacheMQService);
+        super(topic + ".expire." + duration, beeCacheMQService);
         effectiveTime = Duration.parse(duration).toMillis();
     }
 

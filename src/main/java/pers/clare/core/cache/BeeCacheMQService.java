@@ -1,11 +1,14 @@
 package pers.clare.core.cache;
 
 
-import pers.clare.core.mq.GenericReceiveListener;
+import java.util.function.Consumer;
 
 public interface BeeCacheMQService {
 
-    String send(String body);
+    void onConnected(Runnable runnable);
 
-    GenericReceiveListener<String> addListener(GenericReceiveListener<String> listener);
+    void send(String topic, String body);
+
+    void addListener(String topic, Consumer<String> listener);
+
 }
