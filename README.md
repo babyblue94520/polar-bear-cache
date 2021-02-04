@@ -15,8 +15,140 @@
 ![](https://babyblue94520.github.io/bee-cache/images/bee-cache.png)
 
 * 由於緩存通常應用在不頻繁異動的資料上，
-* 透過 __MQ Service__ 發布和訂閱訊息功能，通知所有服務註銷本地的緩存
+* 透過 __Message Queue Server__ 發布和訂閱訊息功能，通知所有服務註銷本地的緩存
 
 ## 使用
 
-### 
+### Message Queue Service
+
+如果是單服務，則不用實作
+
+    @Log4j2
+    @Service
+    public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements  InitializingBean {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    
+        @Autowired
+        private MyRedisMessageListenerContainer myRedisMessageListenerContainer;
+    
+        @Autowired
+        private DefaultClientResources defaultClientResources;
+    
+        @Override
+        public void afterPropertiesSet() throws Exception {
+            defaultClientResources.eventBus().get().subscribe((event) -> {
+                if (event instanceof ConnectedEvent) {
+                    publishConnectedEvent();
+                }
+            });
+        }
+    
+        @Override
+        public void send(String topic, String body) {
+            stringRedisTemplate.convertAndSend(topic, body);
+        }
+    
+        @Override
+        public void addListener(String topic, Consumer<String> listener) {
+            myRedisMessageListenerContainer.addMessageListener((message, pattern) -> {
+                log.info("pattern:{},message:{}", new String(pattern), message);
+                listener.accept(new String(message.getBody()));
+            }, new PatternTopic(topic));
+        }
+    }
+
+
+### 緩存管理服務類型
+
+* __BeeCacheManager__ 
+    
+    基本的緩存管理服務
+
+        // 單一服務架構
+        new BeeCacheManager();
+
+        // 多服務架構，配置 Message Queue Service 和 Topic
+        new BeeCacheManager(topic, beeCacheMQService);
+  
+
+* __ExpireBeeCacheManager__
+
+    固定失效時間的緩存管理服務，緩存從建立後，固定 __60__ 秒後就會失效
+
+        new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+
+* __BusyBeeCacheManager__
+
+    讀取更新失效時間的緩存管理服務，緩存從建立後，如果 __60__ 秒內，沒有被讀取，則會失效
+
+        new BusyBeeCacheManager(topic, beeCacheMQService, "PT60S");
+
+
+### 使用方式
+
+參考 __Spring Cacheable__
+
+__@Cacheable__
+
+一般使用
+
+    @Cacheable(
+        cacheNames = "User"
+        , key = "#id"
+        , condition = "#id != null"
+        , unless = "#result==null"
+    )
+    public User find(Integer id) {
+        // TODO
+    }
+
+時效性緩存
+
+    
+    @Bean("ExpirePT60SName")
+    public CacheManager ExpirePT1D(
+            @Autowired(required = false) BeeCacheMQService beeCacheMQService
+            , @Value("${cache.notify.topic:default}") String topic
+    ) {
+        return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+    }
+
+    @Cacheable(
+        cacheNames = "User"
+        , cacheManager = "ExpirePT60SName"
+        , key = "#id"
+        , condition = "#id != null"
+        , unless = "#result==null"
+    )
+    public User find(Integer id) {
+        // TODO
+    }
+
+__@CacheEvict__
+
+如果有配置 __Message Queue Service__ 時，會將 __Evict Event__ 廣播給其他使用相同配置的服務
+
+
+一般使用
+
+    @CacheEvict(
+        cacheNames = "User"
+        , key = "#user.id"
+        , condition = "#user.id != null"
+    )
+    public void update(User user) {
+        //TODO
+    }
+
+時效性緩存
+
+    @CacheEvict(
+        cacheNames = "User"
+        , cacheManager = "ExpirePT60SName"
+        , key = "#user.id"
+        , condition = "#user.id != null"
+    )
+    public void update(User user) {
+    
+    }

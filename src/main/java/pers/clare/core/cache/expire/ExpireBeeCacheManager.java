@@ -12,6 +12,10 @@ import java.time.Duration;
 public class ExpireBeeCacheManager extends BeeCacheManager {
     protected final long effectiveTime;
 
+    public ExpireBeeCacheManager(String duration) {
+        this(null, null, duration);
+    }
+
     public ExpireBeeCacheManager(
             String topic
             , BeeCacheMQService beeCacheMQService

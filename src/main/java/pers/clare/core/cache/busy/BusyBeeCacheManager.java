@@ -8,6 +8,10 @@ import pers.clare.core.cache.expire.ExpireBeeCacheManager;
 @Log4j2
 public class BusyBeeCacheManager extends ExpireBeeCacheManager {
 
+    public BusyBeeCacheManager(String duration) {
+        this(null, null, duration);
+    }
+
     public BusyBeeCacheManager(
             String topic
             , BeeCacheMQService beeCacheMQService

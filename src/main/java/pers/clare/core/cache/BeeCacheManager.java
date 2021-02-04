@@ -57,6 +57,10 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
         BeeCacheContext.setManager(this);
     }
 
+    public BeeCacheManager() {
+        this(null, null);
+    }
+
     public BeeCacheManager(String topic, BeeCacheMQService beeCacheMQService) {
         this.topic = topic;
         this.beeCacheMQService = beeCacheMQService;
