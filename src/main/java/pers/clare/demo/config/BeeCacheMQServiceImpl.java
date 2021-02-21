@@ -28,6 +28,7 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        // Redis 每個連線都會觸發
         defaultClientResources.eventBus().get().subscribe((event) -> {
             if (event instanceof ConnectedEvent) {
                 publishConnectedEvent();

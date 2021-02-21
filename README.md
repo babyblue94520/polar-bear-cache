@@ -14,7 +14,7 @@
 
 ![](https://babyblue94520.github.io/bee-cache/images/bee-cache.png)
 
-* 由於緩存通常應用在不頻繁異動的資料上，
+* 由於緩存通常應用在不頻繁異動的資料上
 * 透過 __Message Queue Server__ 發布和訂閱訊息功能，通知所有服務註銷本地的緩存
 
 ## 使用
@@ -89,66 +89,74 @@
 
 參考 __Spring Cacheable__
 
-__@Cacheable__
+* __@Cacheable__
 
-一般使用
+  __一般__
+  
+      @Cacheable(
+          cacheNames = "User"
+          , key = "#id"
+          , condition = "#id != null"
+          , unless = "#result==null"
+      )
+      public User find(Integer id) {
+          // TODO
+      }
 
-    @Cacheable(
-        cacheNames = "User"
-        , key = "#id"
-        , condition = "#id != null"
-        , unless = "#result==null"
-    )
-    public User find(Integer id) {
-        // TODO
-    }
+  __時效性__
+  
+      @Bean("ExpirePT60SName")
+      public CacheManager ExpirePT1D(
+              @Autowired(required = false) BeeCacheMQService beeCacheMQService
+              , @Value("${cache.notify.topic:default}") String topic
+      ) {
+          return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+      }
+  
+      @Cacheable(
+          cacheNames = "User"
+          , cacheManager = "ExpirePT60SName"
+          , key = "#id"
+          , condition = "#id != null"
+          , unless = "#result==null"
+      )
+      public User find(Integer id) {
+          // TODO
+      }
 
-時效性緩存
+* __@CacheEvict__
 
+  如果有配置 __Message Queue Service__ 時，會將 __Evict Event__ 廣播給其他使用相同配置的服務
+
+    __一般__
     
-    @Bean("ExpirePT60SName")
-    public CacheManager ExpirePT1D(
-            @Autowired(required = false) BeeCacheMQService beeCacheMQService
-            , @Value("${cache.notify.topic:default}") String topic
-    ) {
-        return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
-    }
-
-    @Cacheable(
-        cacheNames = "User"
-        , cacheManager = "ExpirePT60SName"
-        , key = "#id"
-        , condition = "#id != null"
-        , unless = "#result==null"
-    )
-    public User find(Integer id) {
-        // TODO
-    }
-
-__@CacheEvict__
-
-如果有配置 __Message Queue Service__ 時，會將 __Evict Event__ 廣播給其他使用相同配置的服務
-
-
-一般使用
-
-    @CacheEvict(
-        cacheNames = "User"
-        , key = "#user.id"
-        , condition = "#user.id != null"
-    )
-    public void update(User user) {
-        //TODO
-    }
-
-時效性緩存
-
-    @CacheEvict(
-        cacheNames = "User"
-        , cacheManager = "ExpirePT60SName"
-        , key = "#user.id"
-        , condition = "#user.id != null"
-    )
-    public void update(User user) {
+      @CacheEvict(
+          cacheNames = "User"
+          , key = "#user.id"
+          , condition = "#user.id != null"
+      )
+      public void update(User user) {
+          //TODO
+      }
+  
+    __時效性__
     
-    }
+      @CacheEvict(
+          cacheNames = "User"
+          , cacheManager = "ExpirePT60SName"
+          , key = "#user.id"
+          , condition = "#user.id != null"
+      )
+      public void update(User user) {
+      
+      }
+
+* 註冊 __Evict__ 和 __Clear__ 的事件處理
+  
+  收到 __Evict__ 和 __Clear Event__ ，透過 __handler__ 取得最新資料，直接更新緩存，避免同時請求造成多次查詢或者鎖的等待
+
+      BeeCacheManager.onEvict(
+              UserCacheKey
+              , (data) -> find(data.getId())
+              , User.class
+      );

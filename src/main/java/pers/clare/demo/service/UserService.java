@@ -15,7 +15,12 @@ import static pers.clare.demo.config.CacheKeyAware.UserManager;
 public class UserService {
 
     {
-        BeeCacheManager.refreshWhenEvict(UserCacheKey, (key) -> find(Integer.valueOf(key)));
+        // 註冊註銷事件的更新處理
+        BeeCacheManager.onEvict(
+                UserCacheKey
+                , (data) -> find(data.getId())
+                , User.class
+        );
     }
 
     @Cacheable(
@@ -26,6 +31,18 @@ public class UserService {
             , unless = "#result==null"
     )
     public User find(Integer id) {
+//        return new User(id, "user" + id, 0);
+        return null;
+    }
+
+    @Cacheable(
+            cacheNames = UserCacheKey
+            , cacheManager = UserManager
+            , key = "#id"
+            , condition = "#id != null"
+            , unless = "#result==null"
+    )
+    public User insert(Integer id) {
         return new User(id, "user" + id, 0);
     }
 

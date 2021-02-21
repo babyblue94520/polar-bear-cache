@@ -17,6 +17,11 @@ public class UserController {
         return userService.find(id);
     }
 
+    @PostMapping
+    public User add(Integer id){
+        return userService.insert(id);
+    }
+
     @PutMapping
     public User modify(Integer id){
         return userService.update(id);

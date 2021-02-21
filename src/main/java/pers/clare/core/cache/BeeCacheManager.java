@@ -4,6 +4,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.cache.CacheManager;
+import pers.clare.core.cache.function.BeeCacheEvictHandler;
 import pers.clare.core.lock.IdLock;
 
 import java.util.Collection;
@@ -28,19 +29,19 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
 
     protected static final ConcurrentMap<String, BeeCache> cacheMap = new ConcurrentHashMap<>(16);
 
-    protected static final ConcurrentMap<String, Function<String, Object>> refreshWhenEvictHandlers = new ConcurrentHashMap<>(16);
+    protected static final ConcurrentMap<String, Function> refreshWhenEvictHandlers = new ConcurrentHashMap<>(16);
 
-    protected static final ConcurrentMap<String, Function<Set<String>, Map<String, Object>>> refreshWhenClearHandlers = new ConcurrentHashMap<>(16);
+    protected static final ConcurrentMap<String, Function> refreshWhenClearHandlers = new ConcurrentHashMap<>(16);
 
     private static Runnable connectedHandler;
 
-    public static void refreshWhenEvict(String cacheName, Function<String, Object> handler) {
+    public static <T> void onEvict(String cacheName, Function<T, T> handler, Class<T> clazz) {
         if (refreshWhenEvictHandlers.put(cacheName, handler) != null) {
             throw new RuntimeException(String.format("%s evict refresh handler already exists", cacheName));
         }
     }
 
-    public static void refreshWhenClear(String cacheName, Function<Set<String>, Map<String, Object>> handler) {
+    public static <T> void onClear(String cacheName, Function<Map<String, T>, Map<String, T>> handler, Class<T> clazz) {
         if (refreshWhenClearHandlers.put(cacheName, handler) != null) {
             throw new RuntimeException(String.format("%s clear refresh handler already exists", cacheName));
         }
@@ -93,13 +94,16 @@ public class BeeCacheManager implements CacheManager, CommandLineRunner, Initial
         }
     }
 
+    /**
+     * set unique id
+     */
     private void resetId() {
         id = String.valueOf(System.currentTimeMillis());
         idChars = id.toCharArray();
     }
 
     /**
-     * 解析收到信息
+     * parse message
      *
      * @param data
      */

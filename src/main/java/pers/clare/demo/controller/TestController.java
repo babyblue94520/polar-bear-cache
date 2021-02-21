@@ -32,13 +32,13 @@ public class TestController {
 
     ) throws Exception {
         ExecutorService executors = Executors.newFixedThreadPool(thread);
-        StringBuilder sp = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         long start = System.currentTimeMillis();
         List<Callable<Integer>> tasks = new ArrayList<>();
         for (int t = 0; t < thread; t++) {
             tasks.add(() -> {
                 for (int i = 0; i < max; i++) {
-                    userService.find(i);
+                    userService.insert(i);
                 }
                 return max;
             });
@@ -49,10 +49,10 @@ public class TestController {
             total += f.get();
         }
         long ms = System.currentTimeMillis() - start;
-        sp.append("total time:" + ms + '\n');
-        sp.append("average time:" + (total / (ms) * 1000) + '\n');
+        sb.append("total time:" + ms + '\n');
+        sb.append("average time:" + (total / (ms) * 1000) + '\n');
         executors.shutdown();
-        return sp.toString();
+        return sb.toString();
     }
 
 }

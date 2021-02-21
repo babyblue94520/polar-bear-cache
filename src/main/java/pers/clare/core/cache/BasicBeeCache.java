@@ -1,6 +1,5 @@
 package pers.clare.core.cache;
 
-import io.swagger.models.auth.In;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.cache.Cache;
 
@@ -15,8 +14,8 @@ public class BasicBeeCache implements BeeCache {
     protected final BeeCacheManager manager;
     protected final String name;
 
-    protected final Function<String, Object> refreshWhenEvictHandler;
-    protected final Function<Set<String>, Map<String, Object>> refreshWhenClearHandler;
+    protected final Function refreshWhenEvictHandler;
+    protected final Function<Map<String, Object>, Map<String, Object>> refreshWhenClearHandler;
 
     protected BasicBeeCache(
             BeeCacheManager manager
@@ -126,11 +125,14 @@ public class BasicBeeCache implements BeeCache {
             store.remove(key);
             log.debug("evict name:{} key:{}", name, key);
         } else {
-            Object value = refreshWhenEvictHandler.apply(key);
-            if (value == null) {
-                store.remove(key);
-            } else {
-                store.put(key, createValueWrapper(value));
+            Cache.ValueWrapper wrapper = store.get(key);
+            if (wrapper != null) {
+                Object value = refreshWhenEvictHandler.apply(wrapper.get());
+                if (value == null) {
+                    store.remove(key);
+                } else {
+                    store.put(key, createValueWrapper(value));
+                }
             }
             log.debug("evict refresh name:{} key:{}", name, key);
         }
@@ -164,12 +166,16 @@ public class BasicBeeCache implements BeeCache {
             store.clear();
             log.debug("clear name:{}", name);
         } else if (store.size() > 0) {
-            Set<String> keys = store.keySet();
-            Map<String, Object> values = refreshWhenClearHandler.apply(keys);
+            Map<String, Object> values = new HashMap<>();
+            Map.Entry<String, ValueWrapper> entry;
+            for (Iterator<Map.Entry<String, ValueWrapper>> iterator = store.entrySet().iterator(); iterator.hasNext(); ) {
+                entry = iterator.next();
+                values.put(entry.getKey(), entry.getValue().get());
+            }
+            values = refreshWhenClearHandler.apply(values);
             if (values == null || values.size() == 0) {
                 store.clear();
             } else {
-                Map.Entry<String, ValueWrapper> entry;
                 Object value;
                 for (Iterator<Map.Entry<String, ValueWrapper>> iterator = store.entrySet().iterator(); iterator.hasNext(); ) {
                     entry = iterator.next();
