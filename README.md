@@ -66,24 +66,30 @@ private StringRedisTemplate stringRedisTemplate;
     
     基本的緩存管理服務
 
-        // 單一服務架構
-        new BeeCacheManager();
+    ```java
+    // 單一服務架構
+    new BeeCacheManager();
 
-        // 多服務架構，配置 Message Queue Service 和 Topic
-        new BeeCacheManager(topic, beeCacheMQService);
+    // 多服務架構，配置 Message Queue Service 和 Topic
+    new BeeCacheManager(topic, beeCacheMQService);
+    ```
   
 
 * __ExpireBeeCacheManager__
 
     固定失效時間的緩存管理服務，緩存從建立後，固定 __60__ 秒後就會失效
 
-        new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+    ```java
+    new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+    ```
 
 * __BusyBeeCacheManager__
 
     讀取更新失效時間的緩存管理服務，緩存從建立後，如果 __60__ 秒內，沒有被讀取，則會失效
 
-        new BusyBeeCacheManager(topic, beeCacheMQService, "PT60S");
+    ```java
+    new BusyBeeCacheManager(topic, beeCacheMQService, "PT60S");
+    ```
 
 
 ### 使用方式
