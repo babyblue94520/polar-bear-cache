@@ -23,41 +23,42 @@
 
 如果是單服務，則不用實作
 
-    @Log4j2
-    @Service
-    public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements  InitializingBean {
+```java
+@Log4j2
+@Service
+public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements  InitializingBean {
+@Autowired
+private StringRedisTemplate stringRedisTemplate;
+
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-    
-        @Autowired
-        private MyRedisMessageListenerContainer myRedisMessageListenerContainer;
-    
-        @Autowired
-        private DefaultClientResources defaultClientResources;
-    
-        @Override
-        public void afterPropertiesSet() throws Exception {
-            defaultClientResources.eventBus().get().subscribe((event) -> {
-                if (event instanceof ConnectedEvent) {
-                    publishConnectedEvent();
-                }
-            });
-        }
-    
-        @Override
-        public void send(String topic, String body) {
-            stringRedisTemplate.convertAndSend(topic, body);
-        }
-    
-        @Override
-        public void addListener(String topic, Consumer<String> listener) {
-            myRedisMessageListenerContainer.addMessageListener((message, pattern) -> {
-                log.info("pattern:{},message:{}", new String(pattern), message);
-                listener.accept(new String(message.getBody()));
-            }, new PatternTopic(topic));
-        }
+    private MyRedisMessageListenerContainer myRedisMessageListenerContainer;
+
+    @Autowired
+    private DefaultClientResources defaultClientResources;
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        defaultClientResources.eventBus().get().subscribe((event) -> {
+            if (event instanceof ConnectedEvent) {
+                publishConnectedEvent();
+            }
+        });
     }
 
+    @Override
+    public void send(String topic, String body) {
+        stringRedisTemplate.convertAndSend(topic, body);
+    }
+
+    @Override
+    public void addListener(String topic, Consumer<String> listener) {
+        myRedisMessageListenerContainer.addMessageListener((message, pattern) -> {
+            log.info("pattern:{},message:{}", new String(pattern), message);
+            listener.accept(new String(message.getBody()));
+        }, new PatternTopic(topic));
+    }
+}
+```
 
 ### 緩存管理服務類型
 
@@ -93,37 +94,41 @@ __@Cacheable__
 
 一般使用
 
-    @Cacheable(
-        cacheNames = "User"
-        , key = "#id"
-        , condition = "#id != null"
-        , unless = "#result==null"
-    )
-    public User find(Integer id) {
-        // TODO
-    }
+```java
+@Cacheable(
+    cacheNames = "User"
+    , key = "#id"
+    , condition = "#id != null"
+    , unless = "#result==null"
+)
+public User find(Integer id) {
+    // TODO
+}
+```
 
 時效性緩存
 
-    
-    @Bean("ExpirePT60SName")
-    public CacheManager ExpirePT1D(
-            @Autowired(required = false) BeeCacheMQService beeCacheMQService
-            , @Value("${cache.notify.topic:default}") String topic
-    ) {
-        return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
-    }
 
-    @Cacheable(
-        cacheNames = "User"
-        , cacheManager = "ExpirePT60SName"
-        , key = "#id"
-        , condition = "#id != null"
-        , unless = "#result==null"
-    )
-    public User find(Integer id) {
-        // TODO
-    }
+```java
+@Bean("ExpirePT60SName")
+public CacheManager ExpirePT1D(
+        @Autowired(required = false) BeeCacheMQService beeCacheMQService
+        , @Value("${cache.notify.topic:default}") String topic
+) {
+    return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+}
+
+@Cacheable(
+    cacheNames = "User"
+    , cacheManager = "ExpirePT60SName"
+    , key = "#id"
+    , condition = "#id != null"
+    , unless = "#result==null"
+)
+public User find(Integer id) {
+    // TODO
+}
+```
 
 __@CacheEvict__
 
@@ -132,23 +137,27 @@ __@CacheEvict__
 
 一般使用
 
-    @CacheEvict(
-        cacheNames = "User"
-        , key = "#user.id"
-        , condition = "#user.id != null"
-    )
-    public void update(User user) {
-        //TODO
-    }
+```java
+@CacheEvict(
+    cacheNames = "User"
+    , key = "#user.id"
+    , condition = "#user.id != null"
+)
+public void update(User user) {
+    //TODO
+}
+```
 
 時效性緩存
 
-    @CacheEvict(
-        cacheNames = "User"
-        , cacheManager = "ExpirePT60SName"
-        , key = "#user.id"
-        , condition = "#user.id != null"
-    )
-    public void update(User user) {
-    
-    }
+```java
+@CacheEvict(
+    cacheNames = "User"
+    , cacheManager = "ExpirePT60SName"
+    , key = "#user.id"
+    , condition = "#user.id != null"
+)
+public void update(User user) {
+
+}
+```
