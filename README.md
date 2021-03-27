@@ -12,7 +12,10 @@
 
 由於緩存通常應用在不頻繁異動的資料上，所以不應該每次都向第三方緩存服務取得資料，而是透過 __MQ Service__ 廣播和訂閱訊息功能，發布註銷的事件，將對應的資料清除，大幅提高系統效能，降低龐大架構的維護成本
 
-![](https://babyblue94520.github.io/bee-cache/images/bee-cache.png)
+![](images/bee_cache.png)
+![](images/bee_cache_query.png)
+![](images/bee_cache_modify.png)
+
 
 * 由於緩存通常應用在不頻繁異動的資料上
 * 透過 __Message Queue Server__ 發布和訂閱訊息功能，通知所有服務註銷本地的緩存
