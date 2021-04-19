@@ -102,6 +102,7 @@ private StringRedisTemplate stringRedisTemplate;
 * __@Cacheable__
 
   __一般__
+  
   ```java
   @Cacheable(
       cacheNames = "User"
@@ -114,29 +115,28 @@ private StringRedisTemplate stringRedisTemplate;
   }
   ```
 
-__時效性__
+  __時效性__
 
-
-```java
-@Bean("ExpirePT60SName")
-public CacheManager ExpirePT1D(
-        @Autowired(required = false) BeeCacheMQService beeCacheMQService
-        , @Value("${cache.notify.topic:default}") String topic
-) {
-    return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
-}
-
-@Cacheable(
-    cacheNames = "User"
-    , cacheManager = "ExpirePT60SName"
-    , key = "#id"
-    , condition = "#id != null"
-    , unless = "#result==null"
-)
-public User find(Integer id) {
-    // TODO
-}
-```
+  ```java
+  @Bean("ExpirePT60SName")
+  public CacheManager ExpirePT1D(
+          @Autowired(required = false) BeeCacheMQService beeCacheMQService
+          , @Value("${cache.notify.topic:default}") String topic
+  ) {
+      return new ExpireBeeCacheManager(topic, beeCacheMQService, "PT60S");
+  }
+  
+  @Cacheable(
+      cacheNames = "User"
+      , cacheManager = "ExpirePT60SName"
+      , key = "#id"
+      , condition = "#id != null"
+      , unless = "#result==null"
+  )
+  public User find(Integer id) {
+      // TODO
+  }
+  ```
 
 * __@CacheEvict__
 
@@ -154,10 +154,8 @@ public User find(Integer id) {
         //TODO
     }
     ```
-
-  
-  
     __時效性__
+
     ```java
     @CacheEvict(
         cacheNames = "User"
