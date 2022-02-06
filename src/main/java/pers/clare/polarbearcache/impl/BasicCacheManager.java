@@ -1,9 +1,5 @@
 package pers.clare.polarbearcache.impl;
 
-import pers.clare.polarbearcache.processor.CacheAliveConfig;
-import pers.clare.polarbearcache.processor.CacheAnnotationFactory;
-import pers.clare.polarbearcache.support.CacheDependency;
-import pers.clare.polarbearcache.event.EventSender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.DisposableBean;
@@ -14,6 +10,10 @@ import pers.clare.polarbearcache.PolarBearCache;
 import pers.clare.polarbearcache.PolarBearCacheDependencies;
 import pers.clare.polarbearcache.PolarBearCacheManager;
 import pers.clare.polarbearcache.PolarBearCacheProperties;
+import pers.clare.polarbearcache.event.EventSender;
+import pers.clare.polarbearcache.processor.CacheAliveConfig;
+import pers.clare.polarbearcache.processor.CacheAnnotationFactory;
+import pers.clare.polarbearcache.support.CacheDependency;
 
 import java.util.Collection;
 import java.util.Collections;

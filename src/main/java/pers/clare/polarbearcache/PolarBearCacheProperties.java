@@ -9,10 +9,14 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "polar-bear-cache")
 public class PolarBearCacheProperties {
 
-    /** Cache alive duration. */
+    /**
+     * Cache alive duration.
+     */
     private Duration duration;
 
-    /** Extend the effective time of each use. */
+    /**
+     * Extend the effective time of each use.
+     */
     private boolean extension = false;
 
     private String topic = "polar.bear.cache";

@@ -1,8 +1,8 @@
 package pers.clare.polarbeartest;
 
-import pers.clare.polarbearcache.EnablePolarBearCache;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import pers.clare.polarbearcache.EnablePolarBearCache;
 
 @EnablePolarBearCache
 @SpringBootApplication

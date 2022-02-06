@@ -1,7 +1,7 @@
 package pers.clare.polarbeartest.cache;
 
-import pers.clare.polarbearcache.impl.AbstractCacheEventService;
 import org.springframework.beans.factory.InitializingBean;
+import pers.clare.polarbearcache.impl.AbstractCacheEventService;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +24,7 @@ public class CacheEventServiceImpl extends AbstractCacheEventService implements 
 
     @Override
     public String send(String topic, String body) {
-        executor.submit(()->{
+        executor.submit(() -> {
             topicListenerMap.getOrDefault(topic, Collections.emptyList()).forEach(consumer -> consumer.accept(body));
         });
         return body;

@@ -1,5 +1,8 @@
 package pers.clare.polarbearcache.impl;
 
+import org.junit.jupiter.api.*;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import pers.clare.polarbeartest.ApplicationTest;
 import pers.clare.polarbeartest.cache.CacheType;
 import pers.clare.polarbeartest.cache.CoreCacheConfig;
@@ -10,9 +13,6 @@ import pers.clare.polarbeartest.service.extension.ExtensionUserService;
 import pers.clare.polarbeartest.service.ttl.TTLSimpleUserService;
 import pers.clare.polarbeartest.service.ttl.TTLUserService;
 import pers.clare.polarbeartest.vo.User;
-import org.junit.jupiter.api.*;
-import org.springframework.boot.SpringApplication;
-import org.springframework.context.ApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,11 +1,15 @@
 package pers.clare.polarbearcache.impl;
 
-import pers.clare.polarbeartest.ApplicationTest;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
+import pers.clare.polarbeartest.ApplicationTest;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 

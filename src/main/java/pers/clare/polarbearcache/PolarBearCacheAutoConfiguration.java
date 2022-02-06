@@ -1,10 +1,10 @@
 package pers.clare.polarbearcache;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
 import pers.clare.polarbearcache.impl.BasicCacheManager;
 import pers.clare.polarbearcache.impl.CompositeCacheManagerImpl;
 import pers.clare.polarbearcache.impl.PolarBearCacheDependenciesImpl;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.annotation.Bean;
 
 public class PolarBearCacheAutoConfiguration {
     @Bean

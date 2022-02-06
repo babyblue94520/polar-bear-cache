@@ -1,11 +1,11 @@
 package pers.clare.polarbeartest.cache;
 
-import pers.clare.polarbearcache.PolarBearCacheEventService;
-import pers.clare.polarbearcache.PolarBearCacheManager;
-import pers.clare.polarbearcache.impl.BasicCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import pers.clare.polarbearcache.PolarBearCacheEventService;
+import pers.clare.polarbearcache.PolarBearCacheManager;
+import pers.clare.polarbearcache.impl.BasicCacheManager;
 
 import java.time.Duration;
 

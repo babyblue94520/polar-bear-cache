@@ -51,7 +51,7 @@ public abstract class AbstractUserService {
         return new User(id, "User", System.currentTimeMillis());
     }
 
-    public User updatePutResultKey(Long id){
+    public User updatePutResultKey(Long id) {
         return updatePut(id);
     }
 

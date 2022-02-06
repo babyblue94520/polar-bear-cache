@@ -67,9 +67,9 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
 * __BeeCacheManager__
 
   基本的緩存管理服務
-  
+
     * 單一服務架構
-  
+
       ```java
       public class BeeCacheConfig {
         @Bean
@@ -82,7 +82,7 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
     * 多服務架構
 
       __yml__
-      
+
       ```yaml
       polar-bear-cache:
         notify:
@@ -90,15 +90,15 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
       ```
 
       __BeeCacheEventServiceImpl__
-      
+
       ```java
       public class BeeCacheEventServiceImpl extends AbstractBeeCacheEventService {
       
       }
       ```
-      
+
       __BeeCacheConfig__
-      
+
       ```java
       public class BeeCacheConfig {
       
@@ -108,7 +108,7 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
         }
       }
       ```
-  
+
 * __TTLBeeCacheManager__
 
   固定失效時間的緩存管理服務，緩存從建立後，固定 __60__ 秒後就會失效
@@ -172,7 +172,7 @@ public class BeeCacheMQServiceImpl extends AbstractBeeCacheMQService implements 
       }
     }
   ```
-  
+
   ```java
     public class UserService {
       @Cacheable(

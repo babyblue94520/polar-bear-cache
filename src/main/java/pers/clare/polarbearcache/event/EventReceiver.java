@@ -1,12 +1,12 @@
 package pers.clare.polarbearcache.event;
 
-import pers.clare.polarbearcache.CompositePolarBearCacheManager;
-import pers.clare.polarbearcache.PolarBearCacheEventService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
+import pers.clare.polarbearcache.CompositePolarBearCacheManager;
+import pers.clare.polarbearcache.PolarBearCacheEventService;
 
 public class EventReceiver implements InitializingBean {
     private static final Logger log = LogManager.getLogger();

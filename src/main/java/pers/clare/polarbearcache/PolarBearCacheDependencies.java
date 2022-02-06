@@ -1,7 +1,7 @@
 package pers.clare.polarbearcache;
 
-import pers.clare.polarbearcache.support.CacheDependency;
 import org.springframework.lang.NonNull;
+import pers.clare.polarbearcache.support.CacheDependency;
 
 import java.util.Collection;
 import java.util.function.Function;

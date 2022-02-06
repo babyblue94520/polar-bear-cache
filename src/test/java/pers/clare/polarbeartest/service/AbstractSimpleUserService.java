@@ -1,7 +1,7 @@
 package pers.clare.polarbeartest.service;
 
-import pers.clare.polarbeartest.vo.SimpleUser;
 import org.springframework.beans.factory.InitializingBean;
+import pers.clare.polarbeartest.vo.SimpleUser;
 
 public abstract class AbstractSimpleUserService implements InitializingBean {
 

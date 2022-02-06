@@ -1,8 +1,8 @@
 package pers.clare.polarbearcache.impl;
 
+import org.springframework.lang.NonNull;
 import pers.clare.polarbearcache.PolarBearCacheDependencies;
 import pers.clare.polarbearcache.support.CacheDependency;
-import org.springframework.lang.NonNull;
 
 import java.util.Collection;
 import java.util.Collections;

@@ -1,5 +1,6 @@
 package pers.clare.polarbearcache.impl;
 
+import org.junit.jupiter.api.*;
 import pers.clare.polarbeartest.cache.CacheType;
 import pers.clare.polarbeartest.service.AbstractSimpleUserService;
 import pers.clare.polarbeartest.service.AbstractUserService;
@@ -7,7 +8,6 @@ import pers.clare.polarbeartest.service.ServiceContext;
 import pers.clare.polarbeartest.vo.ReloadUser;
 import pers.clare.polarbeartest.vo.SimpleUser;
 import pers.clare.polarbeartest.vo.User;
-import org.junit.jupiter.api.*;
 
 import java.util.*;
 import java.util.concurrent.*;

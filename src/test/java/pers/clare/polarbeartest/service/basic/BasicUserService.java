@@ -1,10 +1,5 @@
 package pers.clare.polarbeartest.service.basic;
 
-import pers.clare.polarbearcache.PolarBearCacheDependencies;
-import pers.clare.polarbearcache.PolarBearCacheManager;
-import pers.clare.polarbeartest.service.AbstractUserService;
-import pers.clare.polarbeartest.vo.ReloadUser;
-import pers.clare.polarbeartest.vo.User;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -12,6 +7,11 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import pers.clare.polarbearcache.PolarBearCacheDependencies;
+import pers.clare.polarbearcache.PolarBearCacheManager;
+import pers.clare.polarbeartest.service.AbstractUserService;
+import pers.clare.polarbeartest.vo.ReloadUser;
+import pers.clare.polarbeartest.vo.User;
 
 import java.util.List;
 

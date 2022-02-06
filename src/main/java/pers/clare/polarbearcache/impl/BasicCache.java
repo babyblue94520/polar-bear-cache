@@ -1,13 +1,15 @@
 package pers.clare.polarbearcache.impl;
 
-import pers.clare.polarbearcache.PolarBearCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.cache.Cache;
 import org.springframework.lang.NonNull;
+import pers.clare.polarbearcache.PolarBearCache;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collections;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 

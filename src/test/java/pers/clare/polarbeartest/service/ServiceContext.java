@@ -1,8 +1,8 @@
 package pers.clare.polarbeartest.service;
 
-import pers.clare.polarbeartest.cache.CacheType;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import pers.clare.polarbeartest.cache.CacheType;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +32,6 @@ public abstract class ServiceContext<UserService, SimpleUserService> implements 
     }
 
     public static <T> List<T> simpleUserServices(CacheType type) {
-        return (List<T>)  simpleUserServiceTypes.get(type);
+        return (List<T>) simpleUserServiceTypes.get(type);
     }
 }
