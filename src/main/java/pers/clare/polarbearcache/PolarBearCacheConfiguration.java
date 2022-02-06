@@ -11,6 +11,7 @@ import pers.clare.polarbearcache.event.EventSender;
 import pers.clare.polarbearcache.event.EventSenderQueue;
 import pers.clare.polarbearcache.processor.CacheAnnotationFactory;
 
+@SuppressWarnings("SpringFacetCodeInspection")
 @Import({PolarBearCacheProperties.class, CacheAnnotationFactory.class})
 @EnableCaching
 @Configuration

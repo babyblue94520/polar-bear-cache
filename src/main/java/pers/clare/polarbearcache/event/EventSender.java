@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
 
+@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 public class EventSender {
     private static final Logger log = LogManager.getLogger();
 

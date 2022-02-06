@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 
+@SuppressWarnings("SpringFacetCodeInspection")
 @Configuration
 @ConfigurationProperties(prefix = "polar-bear-cache")
 public class PolarBearCacheProperties {

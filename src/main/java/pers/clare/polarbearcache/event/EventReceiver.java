@@ -8,6 +8,7 @@ import org.springframework.cache.CacheManager;
 import pers.clare.polarbearcache.CompositePolarBearCacheManager;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
 
+@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 public class EventReceiver implements InitializingBean {
     private static final Logger log = LogManager.getLogger();
 

@@ -19,6 +19,7 @@ import pers.clare.polarbearcache.processor.CachePutConfig;
 
 import java.util.List;
 
+@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 @Aspect
 @Order
 public class CachePutAop {
