@@ -6,6 +6,7 @@ import pers.clare.polarbearcache.support.CacheDependency;
 import java.util.Collection;
 import java.util.function.Function;
 
+@SuppressWarnings("unused")
 public interface PolarBearCacheDependencies {
 
     String depend(

@@ -26,7 +26,7 @@ public class CachePutAop {
     private final ExpressionParser parser = new SpelExpressionParser();
 
     @Autowired
-    private CompositePolarBearCacheManager cacheManager;
+    private CompositePolarBearCacheManager compositeCacheManager;
 
     @Autowired
     private CacheAnnotationFactory cacheAnnotationFactory;
@@ -59,16 +59,16 @@ public class CachePutAop {
                 try {
                     key = String.valueOf(parser.parseExpression(key).getValue(context));
                     for (String name : cachePutConfig.getCacheNames()) {
-                        cacheManager.evictDependents(name, key);
-                        cacheManager.evictNotify(name, key);
+                        compositeCacheManager.evictDependents(name, key);
+                        compositeCacheManager.evictNotify(name, key);
                     }
                 } catch (Exception e) {
                     log.warn(e.getMessage());
                 }
             } else {
                 for (String name : cachePutConfig.getCacheNames()) {
-                    cacheManager.clearDependents(name);
-                    cacheManager.clearNotify(name);
+                    compositeCacheManager.clearDependents(name);
+                    compositeCacheManager.clearNotify(name);
                 }
             }
         }

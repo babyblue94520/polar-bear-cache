@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiFunction;
 
+@SuppressWarnings("unused")
 public class CompositeCacheManagerImpl implements CompositePolarBearCacheManager {
 
     private final PolarBearCacheManager[] cacheManagers;

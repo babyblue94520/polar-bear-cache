@@ -3,7 +3,7 @@ package pers.clare.polarbearcache.support;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class VolatileBlock {
-    private AtomicInteger count = new AtomicInteger();
+    private final AtomicInteger count = new AtomicInteger();
     private long validTime;
     private final long effectiveTime;
 

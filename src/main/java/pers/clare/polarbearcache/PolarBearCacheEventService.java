@@ -3,6 +3,7 @@ package pers.clare.polarbearcache;
 
 import java.util.function.Consumer;
 
+@SuppressWarnings("UnusedReturnValue")
 public interface PolarBearCacheEventService {
 
     Runnable onConnected(Runnable runnable);

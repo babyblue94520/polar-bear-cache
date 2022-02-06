@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("unused")
 public class BasicCache implements PolarBearCache {
     private static final Logger log = LogManager.getLogger();
     private static final char[] regexPrefix = "regex:".toCharArray();

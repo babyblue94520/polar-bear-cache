@@ -5,6 +5,7 @@ import org.springframework.cache.CacheManager;
 import java.util.function.BiFunction;
 
 
+@SuppressWarnings("unused")
 public interface PolarBearCacheManager extends CacheManager {
 
     void evict(String name, String key);

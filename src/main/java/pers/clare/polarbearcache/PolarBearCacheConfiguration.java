@@ -1,6 +1,5 @@
 package pers.clare.polarbearcache;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -16,8 +15,11 @@ import pers.clare.polarbearcache.processor.CacheAnnotationFactory;
 @EnableCaching
 @Configuration
 public class PolarBearCacheConfiguration {
-    @Autowired
-    private PolarBearCacheProperties properties;
+    private final PolarBearCacheProperties properties;
+
+    public PolarBearCacheConfiguration(PolarBearCacheProperties properties) {
+        this.properties = properties;
+    }
 
     @Bean
     public EventSenderQueue<CacheManager> eventSenderQueue() {

@@ -22,7 +22,7 @@ public class EventReceiver implements InitializingBean {
     private PolarBearCacheEventService eventService;
 
     @Autowired
-    private CompositePolarBearCacheManager cacheManager;
+    private CompositePolarBearCacheManager compositeCacheManager;
 
     public EventReceiver(String topic) {
         this.topic = topic;
@@ -56,14 +56,14 @@ public class EventReceiver implements InitializingBean {
     }
 
     private void onlyClear() {
-        cacheManager.onlyClear(senderQueue.poll());
+        compositeCacheManager.onlyClear(senderQueue.poll());
     }
 
     private void onlyClear(String name) {
-        cacheManager.onlyClear(name, senderQueue.poll(name));
+        compositeCacheManager.onlyClear(name, senderQueue.poll(name));
     }
 
     private void onlyEvict(String name, String key) {
-        cacheManager.onlyEvict(name, key, senderQueue.poll(name, key));
+        compositeCacheManager.onlyEvict(name, key, senderQueue.poll(name, key));
     }
 }

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
+@SuppressWarnings("unused")
 public class EventBlock {
 
     private final VolatileBlock volatileBlock = new VolatileBlock(5000);

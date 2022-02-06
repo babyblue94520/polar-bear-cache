@@ -3,8 +3,9 @@ package pers.clare.polarbearcache.support;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+@SuppressWarnings("unused")
 public class VolatileSenderQueue<T> {
-    private Queue<VolatileSender<T>> queue = new ConcurrentLinkedQueue<>();
+    private final Queue<VolatileSender<T>> queue = new ConcurrentLinkedQueue<>();
     private final long effectiveTime;
 
     public VolatileSenderQueue(long effectiveTime) {

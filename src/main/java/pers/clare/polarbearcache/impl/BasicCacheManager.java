@@ -21,6 +21,7 @@ import java.util.concurrent.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
 public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunner, DisposableBean {
     private static final Logger log = LogManager.getLogger();
 
@@ -43,7 +44,7 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         long delay = 60 * 1000;
         executor.scheduleWithFixedDelay(this::expire, delay, delay, TimeUnit.MILLISECONDS);
     }
@@ -55,9 +56,7 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
 
     public void expire() {
         long now = System.currentTimeMillis();
-        cacheMap.forEach((key, cache) -> {
-            cache.expire(now);
-        });
+        cacheMap.forEach((key, cache) -> cache.expire(now));
     }
 
     @Override
