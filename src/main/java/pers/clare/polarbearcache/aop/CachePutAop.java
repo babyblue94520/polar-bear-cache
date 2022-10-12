@@ -6,7 +6,6 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
@@ -14,23 +13,25 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.StringUtils;
 import pers.clare.polarbearcache.CompositePolarBearCacheManager;
-import pers.clare.polarbearcache.processor.CacheAnnotationFactory;
-import pers.clare.polarbearcache.processor.CachePutConfig;
+import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
+import pers.clare.polarbearcache.proccessor.CachePutConfig;
 
 import java.util.List;
 
-@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 @Aspect
 @Order
 public class CachePutAop {
     private static final Logger log = LogManager.getLogger();
     private final ExpressionParser parser = new SpelExpressionParser();
 
-    @Autowired
-    private CompositePolarBearCacheManager compositeCacheManager;
+    private final CompositePolarBearCacheManager cacheManager;
 
-    @Autowired
-    private CacheAnnotationFactory cacheAnnotationFactory;
+    private final CacheAnnotationFactory cacheAnnotationFactory;
+
+    public CachePutAop(CompositePolarBearCacheManager cacheManager, CacheAnnotationFactory cacheAnnotationFactory) {
+        this.cacheManager = cacheManager;
+        this.cacheAnnotationFactory = cacheAnnotationFactory;
+    }
 
     @AfterReturning(value = "@annotation(org.springframework.cache.annotation.CachePut)", returning = "result")
     public void cachePut(JoinPoint joinPoint, Object result) {
@@ -60,16 +61,16 @@ public class CachePutAop {
                 try {
                     key = String.valueOf(parser.parseExpression(key).getValue(context));
                     for (String name : cachePutConfig.getCacheNames()) {
-                        compositeCacheManager.evictDependents(name, key);
-                        compositeCacheManager.evictNotify(name, key);
+                        cacheManager.evictDependents(name, key);
+                        cacheManager.evictNotify(name, key);
                     }
                 } catch (Exception e) {
                     log.warn(e.getMessage());
                 }
             } else {
                 for (String name : cachePutConfig.getCacheNames()) {
-                    compositeCacheManager.clearDependents(name);
-                    compositeCacheManager.clearNotify(name);
+                    cacheManager.clearDependents(name);
+                    cacheManager.clearNotify(name);
                 }
             }
         }

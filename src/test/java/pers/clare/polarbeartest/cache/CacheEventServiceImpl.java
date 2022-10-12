@@ -1,6 +1,5 @@
 package pers.clare.polarbeartest.cache;
 
-import org.springframework.beans.factory.InitializingBean;
 import pers.clare.polarbearcache.impl.AbstractCacheEventService;
 
 import java.util.Collections;
@@ -13,13 +12,14 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 
-public class CacheEventServiceImpl extends AbstractCacheEventService implements InitializingBean {
+public class CacheEventServiceImpl extends AbstractCacheEventService {
+
     private static final Map<String, List<Consumer<String>>> topicListenerMap = new ConcurrentHashMap<>();
     private static final ExecutorService executor = Executors.newFixedThreadPool(1);
 
     @Override
-    public void afterPropertiesSet() throws Exception {
-        publishConnectedEvent();
+    public Runnable onConnected(Runnable runnable) {
+        return null;
     }
 
     @Override

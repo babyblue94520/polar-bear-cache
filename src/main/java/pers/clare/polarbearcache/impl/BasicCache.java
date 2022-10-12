@@ -4,20 +4,21 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.cache.Cache;
 import org.springframework.lang.NonNull;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.clare.polarbearcache.PolarBearCache;
 
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
-@SuppressWarnings("unused")
 public class BasicCache implements PolarBearCache {
     private static final Logger log = LogManager.getLogger();
-    private static final char[] regexPrefix = "regex:".toCharArray();
-    private static final int regexLength = regexPrefix.length;
 
     protected final ConcurrentMap<String, Cache.ValueWrapper> store;
     protected final BasicCacheManager manager;
@@ -31,11 +32,7 @@ public class BasicCache implements PolarBearCache {
             , long effectiveTime
             , boolean extension
     ) {
-        this.store = new ConcurrentHashMap<>();
-        this.name = name;
-        this.manager = manager;
-        this.effectiveTime = effectiveTime;
-        this.extension = extension;
+        this(manager, name, new ConcurrentHashMap<>(), effectiveTime, extension);
     }
 
     protected BasicCache(
@@ -89,7 +86,16 @@ public class BasicCache implements PolarBearCache {
 
     @Override
     public void put(Object key, Object value) {
-        store.put(String.valueOf(key), createValueWrapper(value));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    store.put(String.valueOf(key), createValueWrapper(value));
+                }
+            });
+        } else {
+            store.put(String.valueOf(key), createValueWrapper(value));
+        }
     }
 
     @Override
@@ -129,9 +135,20 @@ public class BasicCache implements PolarBearCache {
 
     @Override
     public void evict(Object key) {
-        String str = String.valueOf(key);
-        doEvict(str);
-        evictNotify(str);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    String str = String.valueOf(key);
+                    doEvict(str);
+                    evictNotify(str);
+                }
+            });
+        } else {
+            String str = String.valueOf(key);
+            doEvict(str);
+            evictNotify(str);
+        }
     }
 
     public void onlyEvict(String key) {
@@ -144,45 +161,55 @@ public class BasicCache implements PolarBearCache {
     }
 
     private void doEvict(String key) {
-        String regexKey = toRegexKey(key);
-        if (regexKey == null) {
-            remove(key);
-        } else {
-            Pattern pattern = Pattern.compile(regexKey);
-            String str;
-            for (Object k : store.keySet()) {
-                str = k.toString();
-                if (pattern.matcher(str).find()) {
-                    remove(str);
+        if (key.length() > 6) {
+            char[] cs = key.toCharArray();
+            // Check if the cache key is starts with "regex:".
+            if (cs[0] == 'r' && cs[1] == 'e' && cs[2] == 'g' && cs[3] == 'e' && cs[4] == 'x' && cs[5] == ':') {
+                Pattern pattern = Pattern.compile(new String(cs, 6, cs.length - 6));
+                for (Object k : store.keySet()) {
+                    String str = k.toString();
+                    if (pattern.matcher(str).find()) {
+                        remove(str);
+                    }
                 }
+                return;
             }
         }
+        remove(key);
     }
 
     protected void remove(String key) {
-        BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
-        if (evictHandler == null) {
-            store.remove(key);
-            log.debug("evict name:{} key:{}", name, key);
-        } else {
-            Cache.ValueWrapper wrapper = store.get(key);
-            if (wrapper != null) {
-                Object value = evictHandler.apply(key, wrapper.get());
-                if (value == null) {
-                    store.remove(key);
-                } else {
-                    store.put(key, createValueWrapper(value));
-                }
+        Cache.ValueWrapper wrapper = store.get(key);
+        if (wrapper != null) {
+            BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
+            Object value = null;
+            if (evictHandler != null) {
+                value = evictHandler.apply(key, wrapper.get());
+                log.debug("evict refresh name:{} key:{}", name, key);
             }
-            log.debug("evict refresh name:{} key:{}", name, key);
+            if (value == null) {
+                store.remove(key);
+            } else {
+                store.put(key, createValueWrapper(value));
+            }
         }
         manager.evictDependents(name, key);
     }
 
     @Override
     public void clear() {
-        doClear();
-        manager.clearNotify(name);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    doClear();
+                    manager.clearNotify(name);
+                }
+            });
+        } else {
+            doClear();
+            manager.clearNotify(name);
+        }
     }
 
     public void onlyClear() {
@@ -190,17 +217,22 @@ public class BasicCache implements PolarBearCache {
     }
 
     private void doClear() {
-        store.clear();
+        BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
+        if (evictHandler == null) {
+            store.clear();
+        } else {
+            for (Iterator<Map.Entry<String, ValueWrapper>> it = store.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<String, ValueWrapper> entry = it.next();
+                Object value = evictHandler.apply(entry.getKey(), entry.getValue().get());
+                if (value == null) {
+                    it.remove();
+                } else {
+                    entry.setValue(createValueWrapper(value));
+                }
+            }
+        }
+        manager.dispatchClear(name);
         manager.clearDependents(name);
         log.debug("clear name:{}", name);
-    }
-
-    private static String toRegexKey(String key) {
-        if (key.length() < regexLength) return null;
-        char[] cs = key.toCharArray();
-        for (int i = 0; i < regexLength; i++) {
-            if (regexPrefix[i] != cs[i]) return null;
-        }
-        return new String(cs, regexLength, cs.length - regexLength);
     }
 }

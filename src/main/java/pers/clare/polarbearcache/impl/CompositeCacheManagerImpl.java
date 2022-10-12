@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiFunction;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused"})
 public class CompositeCacheManagerImpl implements CompositePolarBearCacheManager {
 
     private final PolarBearCacheManager[] cacheManagers;
@@ -142,9 +142,13 @@ public class CompositeCacheManagerImpl implements CompositePolarBearCacheManager
         }
     }
 
-    @SuppressWarnings({"unused"})
     public <T> void onEvict(String cacheName, BiFunction<String, T, T> handler) {
         throw new UnsupportedOperationException(String.format("%s does not support this onEvict.", CompositeCacheManagerImpl.class));
+    }
+
+    @Override
+    public void onClear(String cacheName, Runnable runnable) {
+        throw new UnsupportedOperationException(String.format("%s does not support this onClear.", CompositeCacheManagerImpl.class));
     }
 
     public BiFunction<String, Object, Object> getEvictHandler(String name) {

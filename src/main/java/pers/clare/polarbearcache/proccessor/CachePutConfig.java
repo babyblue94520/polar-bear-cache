@@ -1,4 +1,4 @@
-package pers.clare.polarbearcache.processor;
+package pers.clare.polarbearcache.proccessor;
 
 public class CachePutConfig {
     private final String[] cacheNames;

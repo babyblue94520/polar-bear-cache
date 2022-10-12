@@ -33,6 +33,11 @@ public class BasicUserService extends AbstractUserService implements Initializin
         cacheManager.<ReloadUser>onEvict(ReloadUser, (key, oldValue) -> reloadUser);
     }
 
+    @Override
+    public void clear() {
+        cacheManager.clear(ReloadUser);
+    }
+
     @Cacheable(
             cacheNames = AllUser
             , key = "'all'"
@@ -90,21 +95,10 @@ public class BasicUserService extends AbstractUserService implements Initializin
         return super.insert();
     }
 
-    @Caching(
-            evict = {
-
-                    @CacheEvict(
-                            cacheNames = User
-                            , key = "#id"
-                            , condition = "#id !=null"
-                    )
-                    ,
-                    @CacheEvict(
-                            cacheNames = User
-                            , key = "'regex:\\d{2}'"
-                            , condition = "#id !=null"
-                    )
-            }
+    @CacheEvict(
+            cacheNames = User
+            , key = "#id"
+            , condition = "#id !=null"
     )
     public User update(Long id) {
         return super.update(id);

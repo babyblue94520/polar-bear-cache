@@ -11,7 +11,5 @@ import java.lang.annotation.*;
 @Inherited
 @Import({PolarBearCacheConfiguration.class})
 @EnableConfigurationProperties
-@SuppressWarnings("unused")
 public @interface EnablePolarBearCache {
-    String value() default "";
 }

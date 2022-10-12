@@ -52,5 +52,5 @@ public interface PolarBearCacheManager extends CacheManager {
 
     <T> void onEvict(String cacheName, BiFunction<String, T, T> handler);
 
-    BiFunction<String, Object, Object> getEvictHandler(String name);
+    void onClear(String cacheName, Runnable runnable);
 }

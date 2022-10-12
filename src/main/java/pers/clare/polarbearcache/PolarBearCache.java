@@ -1,7 +1,6 @@
 package pers.clare.polarbearcache;
 
 import org.springframework.cache.Cache;
-
 @SuppressWarnings("unused")
 public interface PolarBearCache extends Cache {
 

@@ -1,27 +1,24 @@
-package pers.clare.polarbeartest.service.extension;
+package pers.clare.polarbeartest.service.config;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.annotation.*;
 import org.springframework.stereotype.Service;
 import pers.clare.polarbearcache.PolarBearCacheDependencies;
 import pers.clare.polarbearcache.PolarBearCacheManager;
-import pers.clare.polarbearcache.annotation.CacheAlive;
-import pers.clare.polarbeartest.cache.CoreCacheConfig;
 import pers.clare.polarbeartest.service.AbstractUserService;
 import pers.clare.polarbeartest.vo.ReloadUser;
 import pers.clare.polarbeartest.vo.User;
 
 import java.util.List;
 
-import static pers.clare.polarbeartest.cache.key.ExtensionCacheKey.*;
+import static pers.clare.polarbeartest.cache.key.CacheConfigCacheKey.*;
 
+@CacheConfig(
+        cacheNames = User
+)
 @Service
-@CacheAlive(value = CoreCacheConfig.DurationValue2)
-public class ExtensionUserService extends AbstractUserService implements InitializingBean {
+public class CacheConfigUserService extends AbstractUserService implements InitializingBean {
 
     @Autowired
     private PolarBearCacheDependencies cacheDependencies;
@@ -50,10 +47,8 @@ public class ExtensionUserService extends AbstractUserService implements Initial
         return super.findAll();
     }
 
-    @CacheAlive(value = CoreCacheConfig.DurationValue, extension = true)
     @Cacheable(
-            cacheNames = User
-            , key = "#id"
+            key = "#id"
             , condition = "#id !=null"
             , unless = "#result==null"
     )
@@ -61,21 +56,8 @@ public class ExtensionUserService extends AbstractUserService implements Initial
         return super.find(id);
     }
 
-    @CacheAlive(value = CoreCacheConfig.DurationValue, extension = true)
     @Cacheable(
-            cacheNames = ReloadUser
-            , key = "#id"
-            , condition = "#id !=null"
-            , unless = "#result==null"
-    )
-    public ReloadUser findReload(Long id) {
-        return super.findReload(id);
-    }
-
-    @CacheAlive(value = CoreCacheConfig.DurationValue, extension = true)
-    @Cacheable(
-            cacheNames = User
-            , key = "#id"
+            key = "#id"
             , condition = "#id !=null"
             , unless = "#result==null"
     )
@@ -83,7 +65,6 @@ public class ExtensionUserService extends AbstractUserService implements Initial
         return null;
     }
 
-    @CacheAlive(value = CoreCacheConfig.DurationValue, extension = true)
     @Cacheable(
             cacheNames = UserSync
             , key = "#id"
@@ -94,17 +75,25 @@ public class ExtensionUserService extends AbstractUserService implements Initial
         return super.findSync(id);
     }
 
+    @Cacheable(
+            cacheNames = ReloadUser
+            , key = "#id"
+            , condition = "#id !=null"
+            , unless = "#result==null"
+    )
+    public ReloadUser findReload(Long id) {
+        return super.findReload(id);
+    }
+
     @CacheEvict(
-            cacheNames = User
-            , key = "''"
+            key = "''"
     )
     public User insert() {
         return super.insert();
     }
 
     @CacheEvict(
-            cacheNames = User
-            , key = "#id"
+            key = "#id"
             , condition = "#id !=null"
     )
     public User update(Long id) {
@@ -112,8 +101,7 @@ public class ExtensionUserService extends AbstractUserService implements Initial
     }
 
     @CachePut(
-            cacheNames = User
-            , key = "#id"
+            key = "#id"
             , condition = "#id !=null"
             , unless = "#result==null"
     )
@@ -122,8 +110,7 @@ public class ExtensionUserService extends AbstractUserService implements Initial
     }
 
     @CachePut(
-            cacheNames = User
-            , key = "#result.id"
+            key = "#result.id"
             , condition = "#result!=null&&#result.id !=null"
             , unless = "#result==null"
     )
@@ -134,8 +121,7 @@ public class ExtensionUserService extends AbstractUserService implements Initial
     @Caching(
             cacheable = {
                     @Cacheable(
-                            cacheNames = User
-                            , key = "#id"
+                            key = "#id"
                             , condition = "#id !=null"
                             , unless = "#result==null"
                     )
@@ -148,8 +134,7 @@ public class ExtensionUserService extends AbstractUserService implements Initial
     @Caching(
             put = {
                     @CachePut(
-                            cacheNames = User
-                            , key = "#id"
+                            key = "#id"
                             , condition = "#id !=null"
                             , unless = "#result==null"
                     )

@@ -32,6 +32,6 @@ public abstract class ServiceContext<UserService, SimpleUserService> implements 
     }
 
     public static <T> List<T> simpleUserServices(CacheType type) {
-        return (List<T>) simpleUserServiceTypes.get(type);
+        return (List<T>)  simpleUserServiceTypes.get(type);
     }
 }

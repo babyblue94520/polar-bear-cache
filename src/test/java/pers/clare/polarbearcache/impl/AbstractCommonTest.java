@@ -51,10 +51,6 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
         return randomUserService().find(System.currentTimeMillis());
     }
 
-    User create(long id) {
-        return randomUserService().find(id);
-    }
-
     Map<UserService, User> getUserMapFromCaching(Long id) {
         User prev = null, current;
         Map<UserService, User> map = new HashMap<>();
@@ -190,14 +186,8 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
     @Order(3)
     void evict() {
         User user = create();
-        User user1 = create(1);
-        User user10 = create(10);
         Map<UserService, User> map = getUserMap(user.getId());
         userMapSame(map);
-        Map<UserService, User> map1 = getUserMap(user1.getId());
-        userMapSame(map1);
-        Map<UserService, User> map10 = getUserMap(user10.getId());
-        userMapSame(map10);
 
         User modifyUser = randomUserService().update(user.getId());
         assertNotSame(user, modifyUser);
@@ -205,10 +195,7 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
         waitingNotice();
 
         userMapNotSame(map);
-        userMapSame(map1);
-        userMapNotSame(map10);
         userMapSame(getUserMap(user.getId()));
-        userMapSame(getUserMap(user10.getId()));
     }
 
     @Test
@@ -330,6 +317,23 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
         userService.setReloadUser(reloadUser2);
 
         userService.update(user.getId());
+
+        ReloadUser reloadUser3 = userService.findReload(reloadUser1.getId());
+        assertNotEquals(reloadUser1, reloadUser3);
+        assertEquals(reloadUser2, userService.findReload(reloadUser1.getId()));
+    }
+
+    @Test
+    @Order(7)
+    void reload_on_clear() {
+        UserService userService = randomUserService();
+        User user = userService.find(System.currentTimeMillis());
+        ReloadUser reloadUser1 = userService.findReload(1L);
+
+        ReloadUser reloadUser2 = new ReloadUser(reloadUser1.getId(), "reloadUser2", System.currentTimeMillis());
+        userService.setReloadUser(reloadUser2);
+
+        userService.clear();
 
         ReloadUser reloadUser3 = userService.findReload(reloadUser1.getId());
         assertNotEquals(reloadUser1, reloadUser3);

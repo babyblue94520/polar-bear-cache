@@ -3,37 +3,39 @@ package pers.clare.polarbearcache.event;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
+import org.springframework.lang.Nullable;
 import pers.clare.polarbearcache.CompositePolarBearCacheManager;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
+import pers.clare.polarbearcache.PolarBearCacheProperties;
 
-@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 public class EventReceiver implements InitializingBean {
     private static final Logger log = LogManager.getLogger();
 
     private static final String split = ",";
 
-    private final String topic;
+    private final PolarBearCacheProperties properties;
 
-    @Autowired
-    private EventSenderQueue<CacheManager> senderQueue;
+    private final CompositePolarBearCacheManager cacheManager;
 
-    @Autowired(required = false)
-    private PolarBearCacheEventService eventService;
+    private final EventSenderQueue<CacheManager> senderQueue;
 
-    @Autowired
-    private CompositePolarBearCacheManager compositeCacheManager;
+    @Nullable
+    private final PolarBearCacheEventService eventService;
 
-    public EventReceiver(String topic) {
-        this.topic = topic;
+    public EventReceiver(PolarBearCacheProperties properties, CompositePolarBearCacheManager cacheManager, EventSenderQueue<CacheManager> senderQueue, @Nullable PolarBearCacheEventService eventService) {
+        this.properties = properties;
+        this.cacheManager = cacheManager;
+        this.senderQueue = senderQueue;
+        this.eventService = eventService;
     }
+
 
     @Override
     public void afterPropertiesSet() {
         if (eventService == null) return;
         eventService.onConnected(this::onlyClear);
-        eventService.addListener(topic, this::parse);
+        eventService.addListener(properties.getTopic(), this::parse);
     }
 
     public void parse(String data) {
@@ -57,14 +59,14 @@ public class EventReceiver implements InitializingBean {
     }
 
     private void onlyClear() {
-        compositeCacheManager.onlyClear(senderQueue.poll());
+        cacheManager.onlyClear(senderQueue.poll());
     }
 
     private void onlyClear(String name) {
-        compositeCacheManager.onlyClear(name, senderQueue.poll(name));
+        cacheManager.onlyClear(name, senderQueue.poll(name));
     }
 
     private void onlyEvict(String name, String key) {
-        compositeCacheManager.onlyEvict(name, key, senderQueue.poll(name, key));
+        cacheManager.onlyEvict(name, key, senderQueue.poll(name, key));
     }
 }

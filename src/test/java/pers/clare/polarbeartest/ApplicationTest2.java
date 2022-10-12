@@ -6,10 +6,10 @@ import pers.clare.polarbearcache.EnablePolarBearCache;
 
 @EnablePolarBearCache
 @SpringBootApplication
-public class ApplicationTest {
+public class ApplicationTest2 {
 
     public static void main(String[] args) {
-        SpringApplication.run(ApplicationTest.class, args);
+        SpringApplication.run(ApplicationTest2.class, args);
     }
 
 }

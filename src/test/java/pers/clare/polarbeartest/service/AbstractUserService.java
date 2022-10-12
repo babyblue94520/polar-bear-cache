@@ -51,11 +51,13 @@ public abstract class AbstractUserService {
         return new User(id, "User", System.currentTimeMillis());
     }
 
-    public User updatePutResultKey(Long id) {
+    public User updatePutResultKey(Long id){
         return updatePut(id);
     }
 
     abstract public User findCaching(Long id);
 
     abstract public User updateCachingPut(Long id);
+
+    abstract public void clear();
 }

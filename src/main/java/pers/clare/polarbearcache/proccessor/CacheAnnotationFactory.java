@@ -1,4 +1,4 @@
-package pers.clare.polarbearcache.processor;
+package pers.clare.polarbearcache.proccessor;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;

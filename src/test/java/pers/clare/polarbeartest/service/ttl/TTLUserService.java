@@ -11,6 +11,7 @@ import pers.clare.polarbearcache.PolarBearCacheDependencies;
 import pers.clare.polarbearcache.PolarBearCacheManager;
 import pers.clare.polarbearcache.annotation.CacheAlive;
 import pers.clare.polarbeartest.cache.CoreCacheConfig;
+import pers.clare.polarbeartest.cache.key.ExtensionCacheKey;
 import pers.clare.polarbeartest.service.AbstractUserService;
 import pers.clare.polarbeartest.vo.ReloadUser;
 import pers.clare.polarbeartest.vo.User;
@@ -34,6 +35,11 @@ public class TTLUserService extends AbstractUserService implements InitializingB
         cacheDependencies.depend(AllUser, true, User);
         cacheDependencies.depend(ReloadUser, (key) -> "1", User);
         cacheManager.<ReloadUser>onEvict(ReloadUser, (key, oldValue) -> reloadUser);
+    }
+
+    @Override
+    public void clear() {
+        cacheManager.clear(ReloadUser);
     }
 
     @Cacheable(
@@ -97,21 +103,10 @@ public class TTLUserService extends AbstractUserService implements InitializingB
         return super.insert();
     }
 
-    @Caching(
-            evict = {
-
-                    @CacheEvict(
-                            cacheNames = User
-                            , key = "#id"
-                            , condition = "#id !=null"
-                    )
-                    ,
-                    @CacheEvict(
-                            cacheNames = User
-                            , key = "'regex:\\d{2}'"
-                            , condition = "#id !=null"
-                    )
-            }
+    @CacheEvict(
+            cacheNames = User
+            , key = "#id"
+            , condition = "#id !=null"
     )
     public User update(Long id) {
         return super.update(id);
@@ -140,7 +135,7 @@ public class TTLUserService extends AbstractUserService implements InitializingB
     @Caching(
             cacheable = {
                     @Cacheable(
-                            cacheNames = User
+                            cacheNames = ExtensionCacheKey.User
                             , key = "#id"
                             , condition = "#id !=null"
                             , unless = "#result==null"

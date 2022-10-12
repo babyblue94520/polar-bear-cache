@@ -5,7 +5,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
-import pers.clare.polarbeartest.ApplicationTest;
+import pers.clare.polarbeartest.ApplicationTest2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ abstract class AbstractAllManagerTest {
     void before() {
         String topic = String.format("--polar-bear-cache.topic=test.%s.%s", getScope(), UUID.randomUUID());
         for (int i = 0; i < 3; i++) {
-            applications.add(SpringApplication.run(ApplicationTest.class, topic));
+            applications.add(SpringApplication.run(ApplicationTest2.class, topic));
         }
     }
 
