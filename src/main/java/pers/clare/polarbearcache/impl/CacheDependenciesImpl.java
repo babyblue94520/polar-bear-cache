@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
-public class PolarBearCacheDependenciesImpl implements PolarBearCacheDependencies {
+public class CacheDependenciesImpl implements PolarBearCacheDependencies {
     private final ConcurrentMap<String, ConcurrentMap<String, CacheDependency>> dependencies = new ConcurrentHashMap<>();
 
     public Collection<CacheDependency> find(String name) {

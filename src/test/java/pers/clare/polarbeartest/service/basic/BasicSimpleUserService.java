@@ -4,7 +4,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import pers.clare.polarbearcache.impl.PolarBearCacheDependenciesImpl;
+import pers.clare.polarbearcache.impl.CacheDependenciesImpl;
 import pers.clare.polarbeartest.service.AbstractSimpleUserService;
 import pers.clare.polarbeartest.vo.SimpleUser;
 
@@ -15,7 +15,7 @@ import static pers.clare.polarbeartest.cache.key.BasicCacheKey.User;
 public class BasicSimpleUserService extends AbstractSimpleUserService implements InitializingBean {
 
     @Autowired
-    private PolarBearCacheDependenciesImpl cacheDependencies;
+    private CacheDependenciesImpl cacheDependencies;
 
     @Override
     public void afterPropertiesSet() {

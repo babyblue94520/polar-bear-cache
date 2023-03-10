@@ -14,7 +14,7 @@ import pers.clare.polarbearcache.event.EventSender;
 import pers.clare.polarbearcache.event.EventSenderQueue;
 import pers.clare.polarbearcache.impl.BasicCacheManager;
 import pers.clare.polarbearcache.impl.CompositeCacheManagerImpl;
-import pers.clare.polarbearcache.impl.PolarBearCacheDependenciesImpl;
+import pers.clare.polarbearcache.impl.CacheDependenciesImpl;
 import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
 
 @ConditionalOnBean(PolarBearCacheConfiguration.class)
@@ -49,7 +49,7 @@ public class PolarBearCacheAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(PolarBearCacheDependencies.class)
     public PolarBearCacheDependencies cacheDependencies() {
-        return new PolarBearCacheDependenciesImpl();
+        return new CacheDependenciesImpl();
     }
 
     @Bean
