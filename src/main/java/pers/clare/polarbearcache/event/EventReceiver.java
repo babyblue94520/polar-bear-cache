@@ -1,7 +1,5 @@
 package pers.clare.polarbearcache.event;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.cache.CacheManager;
 import org.springframework.lang.Nullable;
@@ -10,9 +8,7 @@ import pers.clare.polarbearcache.PolarBearCacheEventService;
 import pers.clare.polarbearcache.PolarBearCacheProperties;
 
 public class EventReceiver implements InitializingBean {
-    private static final Logger log = LogManager.getLogger();
-
-    private static final String split = ",";
+    private static final String split = "\n";
 
     private final PolarBearCacheProperties properties;
 
@@ -34,12 +30,10 @@ public class EventReceiver implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         if (eventService == null) return;
-        eventService.onConnected(this::onlyClear);
         eventService.addListener(properties.getTopic(), this::parse);
     }
 
     public void parse(String data) {
-        log.debug(data);
         String[] array = data.split(split, -1);
         String name, key;
         switch (array.length) {

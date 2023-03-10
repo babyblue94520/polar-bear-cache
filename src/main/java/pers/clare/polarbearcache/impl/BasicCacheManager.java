@@ -42,7 +42,6 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
 
     private final EventSender eventSender;
 
-
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
     public BasicCacheManager(CacheAnnotationFactory cacheAnnotationFactory, PolarBearCacheProperties properties, PolarBearCacheDependencies cacheDependencies, EventSender eventSender) {
@@ -266,5 +265,9 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
 
     BiFunction<String, Object, Object> getEvictHandler(String name) {
         return evictHandlers.get(name);
+    }
+
+    public boolean isCacheable(){
+        return eventSender.isAvailable();
     }
 }

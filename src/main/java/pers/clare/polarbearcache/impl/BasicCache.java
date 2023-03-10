@@ -86,15 +86,17 @@ public class BasicCache implements PolarBearCache {
 
     @Override
     public void put(Object key, Object value) {
+        String strKey = String.valueOf(key);
+        if (!manager.isCacheable()) return;
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    store.put(String.valueOf(key), createValueWrapper(value));
+                    store.put(strKey, createValueWrapper(value));
                 }
             });
         } else {
-            store.put(String.valueOf(key), createValueWrapper(value));
+            store.put(strKey, createValueWrapper(value));
         }
     }
 
@@ -105,17 +107,20 @@ public class BasicCache implements PolarBearCache {
 
     @Override
     public Cache.ValueWrapper get(Object key) {
-        BasicCacheValueWrapper value = (BasicCacheValueWrapper) this.store.get(String.valueOf(key));
-        if (value == null) return null;
-        if (effectiveTime == 0) return value;
-        long now = System.currentTimeMillis();
-        if (value.getValidTime() > now) {
-            if (this.extension) value.setValidTime(now + effectiveTime);
-            return value;
-        } else {
-            store.remove(key.toString());
-            return null;
+        String strKey = String.valueOf(key);
+        BasicCacheValueWrapper value = (BasicCacheValueWrapper) this.store.get(strKey);
+        if (value != null) {
+            if (manager.isCacheable()) {
+                if (effectiveTime == 0) return value;
+                long now = System.currentTimeMillis();
+                if (value.getValidTime() > now) {
+                    if (this.extension) value.setValidTime(now + effectiveTime);
+                    return value;
+                }
+            }
+            store.remove(strKey);
         }
+        return null;
     }
 
     protected Cache.ValueWrapper createValueWrapper(Object value) {

@@ -374,4 +374,11 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
         userMapSame(getUserMap(user.getId()));
     }
 
+    @Test
+    @Order(10)
+    void available() {
+        User user = create();
+        userMapSame(getUserMap(user.getId()));
+
+    }
 }

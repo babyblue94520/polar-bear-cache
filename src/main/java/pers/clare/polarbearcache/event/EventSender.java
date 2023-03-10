@@ -1,16 +1,12 @@
 package pers.clare.polarbearcache.event;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.cache.CacheManager;
 import org.springframework.lang.Nullable;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
 import pers.clare.polarbearcache.PolarBearCacheProperties;
 
 public class EventSender {
-    private static final Logger log = LogManager.getLogger();
-
-    private static final String split = ",";
+    private static final String split = "\n";
 
     private final PolarBearCacheProperties properties;
     private final EventSenderQueue<CacheManager> senderQueue;
@@ -25,32 +21,25 @@ public class EventSender {
 
 
     public void send(CacheManager cacheManager) {
-        try {
-            if (eventService == null) return;
-            senderQueue.add(cacheManager);
-            eventService.send(properties.getTopic(), "");
-        } catch (Exception e) {
-            log.error(e.getMessage());
-        }
+        if (eventService == null) return;
+        senderQueue.add(cacheManager);
+        eventService.send(properties.getTopic(), "");
     }
 
     public void send(CacheManager cacheManager, String name) {
-        try {
-            if (eventService == null) return;
-            senderQueue.add(cacheManager, name);
-            eventService.send(properties.getTopic(), name);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-        }
+        if (eventService == null) return;
+        senderQueue.add(cacheManager, name);
+        eventService.send(properties.getTopic(), name);
     }
 
     public void send(CacheManager cacheManager, String name, String key) {
-        try {
-            if (eventService == null) return;
-            senderQueue.add(cacheManager, name, key);
-            eventService.send(properties.getTopic(), name + split + key);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-        }
+        if (eventService == null) return;
+        senderQueue.add(cacheManager, name, key);
+        eventService.send(properties.getTopic(), name + split + key);
+    }
+
+    public boolean isAvailable() {
+        if (eventService == null) return true;
+        return eventService.isAvailable();
     }
 }
