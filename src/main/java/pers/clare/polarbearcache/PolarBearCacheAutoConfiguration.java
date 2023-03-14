@@ -13,8 +13,8 @@ import pers.clare.polarbearcache.event.EventReceiver;
 import pers.clare.polarbearcache.event.EventSender;
 import pers.clare.polarbearcache.event.EventSenderQueue;
 import pers.clare.polarbearcache.impl.BasicCacheManager;
-import pers.clare.polarbearcache.impl.CompositeCacheManagerImpl;
 import pers.clare.polarbearcache.impl.CacheDependenciesImpl;
+import pers.clare.polarbearcache.impl.CompositeCacheManagerImpl;
 import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
 
 @ConditionalOnBean(PolarBearCacheConfiguration.class)
@@ -26,6 +26,7 @@ public class PolarBearCacheAutoConfiguration {
     public EventSenderQueue<CacheManager> eventSenderQueue() {
         return new EventSenderQueue<>();
     }
+
     @Bean
     @ConditionalOnMissingBean(CachePutAop.class)
     public CachePutAop cachePutAop(
@@ -38,11 +39,10 @@ public class PolarBearCacheAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(EventSender.class)
     public EventSender eventSender(
-            PolarBearCacheProperties properties
-            , @Nullable PolarBearCacheEventService eventService
+            @Nullable PolarBearCacheEventService eventService
             , EventSenderQueue<CacheManager> senderQueue
     ) {
-        return new EventSender(properties, eventService, senderQueue);
+        return new EventSender(eventService, senderQueue);
     }
 
 
@@ -75,12 +75,11 @@ public class PolarBearCacheAutoConfiguration {
     @Bean
     @ConditionalOnBean(CompositePolarBearCacheManager.class)
     public EventReceiver eventReceiver(
-            PolarBearCacheProperties properties
-            , CompositePolarBearCacheManager cacheManager
+            CompositePolarBearCacheManager cacheManager
             , EventSenderQueue<CacheManager> senderQueue
             , @Nullable PolarBearCacheEventService eventService
     ) {
-        return new EventReceiver(properties, cacheManager, senderQueue, eventService);
+        return new EventReceiver(cacheManager, senderQueue, eventService);
     }
 
 }

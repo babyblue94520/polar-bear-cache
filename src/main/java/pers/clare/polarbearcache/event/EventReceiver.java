@@ -5,12 +5,9 @@ import org.springframework.cache.CacheManager;
 import org.springframework.lang.Nullable;
 import pers.clare.polarbearcache.CompositePolarBearCacheManager;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
-import pers.clare.polarbearcache.PolarBearCacheProperties;
 
 public class EventReceiver implements InitializingBean {
     private static final String split = "\n";
-
-    private final PolarBearCacheProperties properties;
 
     private final CompositePolarBearCacheManager cacheManager;
 
@@ -19,8 +16,7 @@ public class EventReceiver implements InitializingBean {
     @Nullable
     private final PolarBearCacheEventService eventService;
 
-    public EventReceiver(PolarBearCacheProperties properties, CompositePolarBearCacheManager cacheManager, EventSenderQueue<CacheManager> senderQueue, @Nullable PolarBearCacheEventService eventService) {
-        this.properties = properties;
+    public EventReceiver(CompositePolarBearCacheManager cacheManager, EventSenderQueue<CacheManager> senderQueue, @Nullable PolarBearCacheEventService eventService) {
         this.cacheManager = cacheManager;
         this.senderQueue = senderQueue;
         this.eventService = eventService;
@@ -30,7 +26,7 @@ public class EventReceiver implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         if (eventService == null) return;
-        eventService.addListener(properties.getTopic(), this::parse);
+        eventService.addListener(this::parse);
     }
 
     public void parse(String data) {

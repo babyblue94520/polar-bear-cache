@@ -9,12 +9,12 @@ public interface PolarBearCacheEventService {
     /**
      * Send cache eviction events.
      */
-    String send(String topic, String body);
+    void send( String body);
 
     /**
      * Listen for cache eviction events.
      */
-    Consumer<String> addListener(String topic, Consumer<String> listener);
+    void addListener( Consumer<String> listener);
 
     /**
      * Affects whether the cache manage can be cached.

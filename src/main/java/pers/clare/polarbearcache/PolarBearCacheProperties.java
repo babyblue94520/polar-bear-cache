@@ -16,17 +16,7 @@ public class PolarBearCacheProperties {
     /** Extend the effective time of each use. */
     private boolean extension = false;
 
-    private String topic = "polar.bear.cache";
-
     private long effectiveTime = 0;
-
-    public String getTopic() {
-        return topic;
-    }
-
-    public void setTopic(String topic) {
-        this.topic = topic;
-    }
 
     public Duration getDuration() {
         return duration;

@@ -3,18 +3,15 @@ package pers.clare.polarbearcache.event;
 import org.springframework.cache.CacheManager;
 import org.springframework.lang.Nullable;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
-import pers.clare.polarbearcache.PolarBearCacheProperties;
 
 public class EventSender {
     private static final String split = "\n";
 
-    private final PolarBearCacheProperties properties;
     private final EventSenderQueue<CacheManager> senderQueue;
     @Nullable
     private final PolarBearCacheEventService eventService;
 
-    public EventSender(PolarBearCacheProperties properties, @Nullable PolarBearCacheEventService eventService, EventSenderQueue<CacheManager> senderQueue) {
-        this.properties = properties;
+    public EventSender(@Nullable PolarBearCacheEventService eventService, EventSenderQueue<CacheManager> senderQueue) {
         this.senderQueue = senderQueue;
         this.eventService = eventService;
     }
@@ -23,19 +20,19 @@ public class EventSender {
     public void send(CacheManager cacheManager) {
         if (eventService == null) return;
         senderQueue.add(cacheManager);
-        eventService.send(properties.getTopic(), "");
+        eventService.send("");
     }
 
     public void send(CacheManager cacheManager, String name) {
         if (eventService == null) return;
         senderQueue.add(cacheManager, name);
-        eventService.send(properties.getTopic(), name);
+        eventService.send(name);
     }
 
     public void send(CacheManager cacheManager, String name, String key) {
         if (eventService == null) return;
         senderQueue.add(cacheManager, name, key);
-        eventService.send(properties.getTopic(), name + split + key);
+        eventService.send(name + split + key);
     }
 
     public boolean isAvailable() {
