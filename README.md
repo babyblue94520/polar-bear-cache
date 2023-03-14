@@ -60,12 +60,6 @@ public class Application {
     }
 }
 ```
-__yml__
-
-```yaml
-polar-bear-cache:
-  topic: polar.bear.cache
-```
 
 __CacheEventServiceImpl__
     
@@ -82,6 +76,8 @@ public class CacheEventServiceImpl extends PolarBearCacheEventService implements
     @Autowired
     private DefaultClientResources defaultClientResources;
 
+    private final String topic = "cache";
+    
     @Override
     public void afterPropertiesSet() throws Exception {
         defaultClientResources.eventBus().get().subscribe((event) -> {
@@ -92,12 +88,12 @@ public class CacheEventServiceImpl extends PolarBearCacheEventService implements
     }
 
     @Override
-    public void send(String topic, String body) {
+    public void send(String body) {
         stringRedisTemplate.convertAndSend(topic, body);
     }
 
     @Override
-    public void addListener(String topic, Consumer<String> listener) {
+    public void addListener(Consumer<String> listener) {
         redisMessageListenerContainer.addMessageListener((message, pattern) -> {
             log.info("pattern:{},message:{}", new String(pattern), message);
             listener.accept(new String(message.getBody()));
