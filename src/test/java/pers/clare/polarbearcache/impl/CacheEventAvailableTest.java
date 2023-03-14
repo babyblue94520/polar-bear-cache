@@ -31,6 +31,7 @@ class CacheEventAvailableTest {
 
     @Test
     void available() {
+        cacheEventService.setAvailable(true);
         long id = System.currentTimeMillis();
         User user = basicUserService.find(id);
         assertSame(user, basicUserService.find(id));
@@ -45,6 +46,7 @@ class CacheEventAvailableTest {
 
     @Test
     void performance() throws ExecutionException, InterruptedException {
+        cacheEventService.setAvailable(true);
         run();
         cacheEventService.setAvailable(false);
         run();

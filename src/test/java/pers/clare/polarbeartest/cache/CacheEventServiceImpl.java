@@ -15,8 +15,6 @@ public class CacheEventServiceImpl implements PolarBearCacheEventService {
     private static final ExecutorService executor = Executors.newFixedThreadPool(1);
     private boolean available = true;
 
-
-
     @Override
     public void send( String body) {
         executor.submit(() -> listeners.forEach(consumer -> consumer.accept(body)));

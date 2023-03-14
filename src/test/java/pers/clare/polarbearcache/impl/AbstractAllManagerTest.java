@@ -9,7 +9,6 @@ import pers.clare.polarbeartest.ApplicationTest2;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
@@ -22,9 +21,8 @@ abstract class AbstractAllManagerTest {
 
     @BeforeAll
     void before() {
-        String topic = String.format("--polar-bear-cache.topic=test.%s.%s", getScope(), UUID.randomUUID());
         for (int i = 0; i < 3; i++) {
-            applications.add(SpringApplication.run(ApplicationTest2.class, topic));
+            applications.add(SpringApplication.run(ApplicationTest2.class));
         }
     }
 

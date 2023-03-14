@@ -19,7 +19,6 @@ import pers.clare.polarbeartest.vo.User;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
@@ -31,9 +30,8 @@ class CacheManagerManagerTest {
 
     @BeforeAll
     void before() {
-        String topic = String.format("--polar-bear-cache.topic=test.%s", UUID.randomUUID());
         for (int i = 0; i < 3; i++) {
-            applications.add(SpringApplication.run(ApplicationTest2.class, topic));
+            applications.add(SpringApplication.run(ApplicationTest2.class));
         }
     }
 
@@ -87,7 +85,7 @@ class CacheManagerManagerTest {
         @Test
         @Order(11)
         void timeout2() throws InterruptedException {
-            User user = create();
+            create();
             Map<TTLUserService, List<User>> map = getUserListMap();
             userListMapSame(map);
             Thread.sleep(CoreCacheConfig.EffectiveTime2 + 1000);
@@ -131,7 +129,7 @@ class CacheManagerManagerTest {
         @Test
         @Order(11)
         void timeout2() throws InterruptedException {
-            User user = create();
+            create();
             Map<ExtensionUserService, List<User>> map = getUserListMap();
             userListMapSame(map);
             Thread.sleep(CoreCacheConfig.EffectiveTime2 + 1000);
@@ -141,7 +139,7 @@ class CacheManagerManagerTest {
         @Test
         @Order(11)
         void notTimeout2() throws InterruptedException {
-            User user = create();
+            create();
             Map<ExtensionUserService, List<User>> map = getUserListMap();
             userListMapSame(map);
             for (int i = 0; i < 3; i++) {
