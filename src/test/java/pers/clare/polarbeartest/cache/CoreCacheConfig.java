@@ -2,14 +2,7 @@ package pers.clare.polarbeartest.cache;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import pers.clare.polarbearcache.PolarBearCacheDependencies;
 import pers.clare.polarbearcache.PolarBearCacheEventService;
-import pers.clare.polarbearcache.PolarBearCacheManager;
-import pers.clare.polarbearcache.PolarBearCacheProperties;
-import pers.clare.polarbearcache.event.EventSender;
-import pers.clare.polarbearcache.impl.BasicCacheManager;
-import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
 
 import java.time.Duration;
 
@@ -24,14 +17,4 @@ public class CoreCacheConfig {
         return new CacheEventServiceImpl();
     }
 
-    @Bean
-    @Primary
-    public PolarBearCacheManager polarBearCacheManager(
-            CacheAnnotationFactory cacheAnnotationFactory
-            , PolarBearCacheProperties properties
-            , PolarBearCacheDependencies cacheDependencies
-            , EventSender eventSender
-    ) {
-        return new BasicCacheManager(cacheAnnotationFactory, properties, cacheDependencies, eventSender);
-    }
 }
