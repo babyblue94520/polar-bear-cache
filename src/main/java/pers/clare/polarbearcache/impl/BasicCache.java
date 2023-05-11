@@ -184,13 +184,13 @@ public class BasicCache implements PolarBearCache {
     }
 
     protected void remove(String key) {
-        Cache.ValueWrapper wrapper = store.get(key);
         Object value = null;
-        if (wrapper != null) {
-            value = wrapper.get();
-        }
         BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
         if (evictHandler != null) {
+            Cache.ValueWrapper wrapper = store.get(key);
+            if (wrapper != null) {
+                value = wrapper.get();
+            }
             value = evictHandler.apply(key, value);
             log.debug("evict refresh name:{} key:{}", name, key);
         }
