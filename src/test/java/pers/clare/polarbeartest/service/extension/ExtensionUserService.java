@@ -50,6 +50,7 @@ public class ExtensionUserService extends AbstractUserService implements Initial
         return super.findAll();
     }
 
+
     @CacheAlive(value = CoreCacheConfig.DurationValue, extension = true)
     @Cacheable(
             cacheNames = User

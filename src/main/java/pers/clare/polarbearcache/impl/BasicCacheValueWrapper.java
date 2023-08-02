@@ -18,7 +18,7 @@ public class BasicCacheValueWrapper implements Cache.ValueWrapper {
         return value;
     }
 
-    long getValidTime() {
+    public long getValidTime() {
         return validTime;
     }
 

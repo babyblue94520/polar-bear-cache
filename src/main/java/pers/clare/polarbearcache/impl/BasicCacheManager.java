@@ -210,7 +210,11 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
             if (dependent.getAllEntries()) {
                 cache.onlyClear();
             } else {
-                cache.onlyEvict(dependent.getKeyConverter().apply(key));
+                try {
+                    cache.onlyEvict(dependent.getKeyConverter().apply(key));
+                } catch (Exception e) {
+                    log.error(e);
+                }
             }
         }
     }
@@ -267,7 +271,7 @@ public class BasicCacheManager implements PolarBearCacheManager, CommandLineRunn
         return evictHandlers.get(name);
     }
 
-    public boolean isCacheable(){
+    public boolean isCacheable() {
         return eventSender.isAvailable();
     }
 }

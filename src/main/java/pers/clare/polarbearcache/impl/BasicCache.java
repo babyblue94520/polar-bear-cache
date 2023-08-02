@@ -7,6 +7,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.clare.polarbearcache.PolarBearCache;
+import pers.clare.polarbearcache.support.CacheKeyUtil;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -166,21 +167,19 @@ public class BasicCache implements PolarBearCache {
     }
 
     private void doEvict(String key) {
-        if (key.length() > 6) {
-            char[] cs = key.toCharArray();
-            // Check if the cache key is starts with "regex:".
-            if (cs[0] == 'r' && cs[1] == 'e' && cs[2] == 'g' && cs[3] == 'e' && cs[4] == 'x' && cs[5] == ':') {
-                Pattern pattern = Pattern.compile(new String(cs, 6, cs.length - 6));
-                for (Object k : store.keySet()) {
-                    String str = k.toString();
-                    if (pattern.matcher(str).find()) {
-                        remove(str);
-                    }
+        log.debug("doEvict name:{} key:{}", name, key);
+        Pattern pattern = CacheKeyUtil.getPattern(key);
+        if (pattern == null) {
+            remove(key);
+        }else{
+            for (Object k : store.keySet()) {
+                String keyStr = k.toString();
+                if (pattern.matcher(keyStr).find()) {
+                    remove(keyStr);
                 }
-                return;
             }
         }
-        remove(key);
+        manager.evictDependents(name, key);
     }
 
     protected void remove(String key) {
@@ -192,14 +191,14 @@ public class BasicCache implements PolarBearCache {
                 value = wrapper.get();
             }
             value = evictHandler.apply(key, value);
-            log.debug("evict refresh name:{} key:{}", name, key);
         }
         if (value == null) {
+            log.debug("evict remove name:{} key:{}", name, key);
             store.remove(key);
         } else {
+            log.debug("evict put name:{} key:{}", name, key);
             store.put(key, createValueWrapper(value));
         }
-        manager.evictDependents(name, key);
     }
 
     @Override

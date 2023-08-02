@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 @DisplayName("PolarBearCacheManagerTest")
 @TestInstance(PER_CLASS)
-class CacheManagerManagerTest {
+class CacheManagerTest {
 
     private final List<ApplicationContext> applications = new ArrayList<>();
 
