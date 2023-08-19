@@ -12,7 +12,7 @@
 
     <groupId>io.github.babyblue94520</groupId>
     <artifactId>polar-bear-cache</artifactId>
-    <version>1.2.2-RELEASE</version>
+    <version>1.2.3-RELEASE</version>
     <name>polar-bear-cache</name>
     <description>Polar bear cache</description>
     <packaging>jar</packaging>
