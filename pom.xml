@@ -6,21 +6,22 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.6</version>
+        <version>2.7.18</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <groupId>io.github.babyblue94520</groupId>
     <artifactId>polar-bear-cache</artifactId>
-    <version>1.2.3-RELEASE</version>
+    <version>1.3.0-RELEASE</version>
     <name>polar-bear-cache</name>
     <description>Polar bear cache</description>
-    <packaging>jar</packaging>
     <url>https://github.com/babyblue94520/polar-bear-cache.git</url>
 
     <scm>
-        <connection>https://github.com/babyblue94520/polar-bear-cache.git.git</connection>
-        <url>https://github.com/babyblue94520/polar-bear-cache.git.git</url>
+        <connection>scm:git:https://github.com/babyblue94520/polar-bear-cache.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/babyblue94520/polar-bear-cache.git</developerConnection>
+        <url>https://github.com/babyblue94520/polar-bear-cache</url>
+        <tag>HEAD</tag>
     </scm>
 
     <developers>
@@ -44,16 +45,46 @@
 
     <properties>
         <java.version>11</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <!-- Last public Spring 5.3 release; remaining commercial-only fixes are documented in SECURITY.md. -->
+        <spring-framework.version>5.3.39</spring-framework.version>
+        <assertj.version>3.27.7</assertj.version>
+        <json-path.version>2.9.0</json-path.version>
+        <json-smart.version>2.5.2</json-smart.version>
+        <xmlunit2.version>2.10.4</xmlunit2.version>
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <!-- Keep all Log4j modules aligned, including the CVE-2026-49844 fix. -->
+        <log4j2.version>2.25.5</log4j2.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-beans</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-expression</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
             <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -65,8 +96,8 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.aspectj</groupId>
@@ -76,43 +107,38 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <!-- Boot 2's Logback integration cannot use the maintained Logback 1.5 API. -->
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <encoding>UTF-8</encoding>
-                    <forceJavacCompilerUse>true</forceJavacCompilerUse>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>${maven-source-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
     <profiles>
         <profile>
             <id>release</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
