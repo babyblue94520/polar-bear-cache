@@ -20,4 +20,10 @@ public interface PolarBearCacheEventService {
      * Affects whether the cache manage can be cached.
      */
     boolean isAvailable();
+
+    /**
+     * Thread-safe, monotonically increasing version. Increment whenever events may
+     * have been missed, before making a recovered connection available again.
+     */
+    long getInvalidationVersion();
 }

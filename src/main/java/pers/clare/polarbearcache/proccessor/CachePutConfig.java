@@ -1,19 +1,15 @@
 package pers.clare.polarbearcache.proccessor;
 
+import org.springframework.cache.interceptor.CachePutOperation;
+
 public class CachePutConfig {
-    private final String[] cacheNames;
-    private final String key;
+    private final CachePutOperation operation;
 
-    public CachePutConfig(String[] cacheNames, String key) {
-        this.cacheNames = cacheNames;
-        this.key = key;
+    public CachePutConfig(CachePutOperation operation) {
+        this.operation = operation;
     }
 
-    public String[] getCacheNames() {
-        return cacheNames;
-    }
-
-    public String getKey() {
-        return key;
+    public CachePutOperation getOperation() {
+        return operation;
     }
 }

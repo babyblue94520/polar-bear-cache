@@ -11,8 +11,14 @@ public class VolatileSenderQueue<T> {
         this.effectiveTime = effectiveTime;
     }
 
-    public void add(T t) {
-        queue.add(new VolatileSender<>(t, System.currentTimeMillis() + effectiveTime));
+    public Object add(T t) {
+        VolatileSender<T> sender = new VolatileSender<>(t, System.currentTimeMillis() + effectiveTime);
+        queue.add(sender);
+        return sender;
+    }
+
+    public boolean remove(Object marker) {
+        return marker != null && queue.remove(marker);
     }
 
     public T poll() {
@@ -24,6 +30,15 @@ public class VolatileSenderQueue<T> {
             }
         }
         return null;
+    }
+
+    public boolean removeExpired() {
+        VolatileSender<T> sender;
+        long now = System.currentTimeMillis();
+        while ((sender = queue.peek()) != null && sender.getValidTime() <= now) {
+            queue.poll();
+        }
+        return queue.isEmpty();
     }
 
     public int size() {

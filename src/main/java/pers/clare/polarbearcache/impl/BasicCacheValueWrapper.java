@@ -6,7 +6,7 @@ import org.springframework.cache.Cache;
 public class BasicCacheValueWrapper implements Cache.ValueWrapper {
     private final Object value;
 
-    private long validTime;
+    private volatile long validTime;
 
     public BasicCacheValueWrapper(Object value, long validTime) {
         this.value = value;

@@ -6,6 +6,8 @@ public interface PolarBearCache extends Cache {
 
     Object getValue(String key);
 
+    void putNotify(String key);
+
     void onlyEvict(String key);
 
     void onlyClear();

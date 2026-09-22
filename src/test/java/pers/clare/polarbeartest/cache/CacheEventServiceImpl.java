@@ -13,7 +13,8 @@ public class CacheEventServiceImpl implements PolarBearCacheEventService {
 
     private static final List<Consumer<String>> listeners = new CopyOnWriteArrayList<>();
     private static final ExecutorService executor = Executors.newFixedThreadPool(1);
-    private boolean available = true;
+    private volatile boolean available = true;
+    private final java.util.concurrent.atomic.AtomicLong invalidationVersion = new java.util.concurrent.atomic.AtomicLong();
 
     @Override
     public void send( String body) {
@@ -31,7 +32,13 @@ public class CacheEventServiceImpl implements PolarBearCacheEventService {
     }
 
     public void setAvailable(boolean available){
+        if (!available) invalidationVersion.incrementAndGet();
         this.available = available;
+    }
+
+    @Override
+    public long getInvalidationVersion() {
+        return invalidationVersion.get();
     }
 
 }

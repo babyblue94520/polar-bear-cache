@@ -1,27 +1,25 @@
 package pers.clare.polarbearcache.impl;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
-import org.springframework.lang.NonNull;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.clare.polarbearcache.PolarBearCache;
 import pers.clare.polarbearcache.support.CacheKeyUtil;
+import pers.clare.polarbearcache.support.TransactionSupport;
 
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
-public class BasicCache implements PolarBearCache {
-    private static final Logger log = LogManager.getLogger();
 
-    protected final ConcurrentMap<String, Cache.ValueWrapper> store;
+public class BasicCache implements PolarBearCache {
+    private static final Logger log = LoggerFactory.getLogger(BasicCache.class);
+
+    protected volatile ConcurrentMap<String, Cache.ValueWrapper> store;
     protected final BasicCacheManager manager;
     protected final String name;
     protected final long effectiveTime;
@@ -60,6 +58,10 @@ public class BasicCache implements PolarBearCache {
         return Collections.unmodifiableMap(store);
     }
 
+    void discardStorage() {
+        store = new ConcurrentHashMap<>();
+    }
+
     @Override
     public Object getValue(String key) {
         Cache.ValueWrapper value = get(key);
@@ -73,88 +75,131 @@ public class BasicCache implements PolarBearCache {
         return (T) getValue(String.valueOf(key));
     }
 
+    /**
+     * Loads atomically and caches immediately, including inside a transaction.
+     * Callers must avoid caching uncommitted data; rollback does not undo this load.
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> T get(Object key, Callable<T> valueLoader) {
-        return (T) store.computeIfAbsent(String.valueOf(key), (k) -> {
-            try {
-                return createValueWrapper(valueLoader.call());
-            } catch (Exception e) {
-                throw new ValueRetrievalException(key, valueLoader, e);
-            }
+        String strKey = String.valueOf(key);
+        if (!manager.isCacheable()) {
+            store.remove(strKey);
+            return loadValue(key, valueLoader);
+        }
+        return (T) store.compute(strKey, (k, current) -> {
+            BasicCacheValueWrapper value = getValidValue(current);
+            if (value != null) return value;
+            return createValueWrapper(loadValue(key, valueLoader));
         }).get();
+    }
+
+    @Override
+    public Cache.ValueWrapper get(Object key) {
+        String strKey = String.valueOf(key);
+        if (!manager.isCacheable()) {
+            store.remove(strKey);
+            return null;
+        }
+        return getValidValue(strKey);
+    }
+
+    private BasicCacheValueWrapper getValidValue(String key) {
+        AtomicReference<BasicCacheValueWrapper> result = new AtomicReference<>();
+        store.computeIfPresent(key, (k, current) -> {
+            BasicCacheValueWrapper value = getValidValue(current);
+            result.set(value);
+            return value;
+        });
+        return result.get();
+    }
+
+    private BasicCacheValueWrapper getValidValue(Cache.ValueWrapper current) {
+        if (!(current instanceof BasicCacheValueWrapper)) return null;
+        BasicCacheValueWrapper value = (BasicCacheValueWrapper) current;
+        if (effectiveTime == 0) return value;
+
+        long now = System.currentTimeMillis();
+        if (value.getValidTime() <= now) return null;
+        if (extension) value.setValidTime(now + effectiveTime);
+        return value;
+    }
+
+    private <T> T loadValue(Object key, Callable<T> valueLoader) {
+        try {
+            return valueLoader.call();
+        } catch (Exception e) {
+            throw new ValueRetrievalException(key, valueLoader, e);
+        }
     }
 
     @Override
     public void put(Object key, Object value) {
         String strKey = String.valueOf(key);
         if (!manager.isCacheable()) return;
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    store.put(strKey, createValueWrapper(value));
-                }
-            });
-        } else {
-            store.put(strKey, createValueWrapper(value));
-        }
+        ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
+        TransactionSupport.afterCommit(() -> targetStore.put(strKey, createValueWrapper(value)));
     }
 
     @Override
     public Cache.ValueWrapper putIfAbsent(Object key, Object value) {
-        return store.putIfAbsent(String.valueOf(key), createValueWrapper(value));
+        String strKey = String.valueOf(key);
+        if (!manager.isCacheable()) {
+            store.remove(strKey);
+            return null;
+        }
+
+        BasicCacheValueWrapper current = getValidValue(strKey);
+        if (current != null) return current;
+
+        AtomicReference<Cache.ValueWrapper> existing = new AtomicReference<>();
+        ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
+        TransactionSupport.afterCommit(() -> targetStore.compute(strKey, (k, wrapper) -> {
+            BasicCacheValueWrapper valid = getValidValue(wrapper);
+            if (valid != null) {
+                existing.set(valid);
+                return valid;
+            }
+            return createValueWrapper(value);
+        }));
+        return existing.get();
     }
 
-    @Override
-    public Cache.ValueWrapper get(Object key) {
-        String strKey = String.valueOf(key);
-        BasicCacheValueWrapper value = (BasicCacheValueWrapper) this.store.get(strKey);
-        if (value != null) {
-            if (manager.isCacheable()) {
-                if (effectiveTime == 0) return value;
-                long now = System.currentTimeMillis();
-                if (value.getValidTime() > now) {
-                    if (this.extension) value.setValidTime(now + effectiveTime);
-                    return value;
-                }
-            }
-            store.remove(strKey);
-        }
-        return null;
-    }
 
     protected Cache.ValueWrapper createValueWrapper(Object value) {
         return new BasicCacheValueWrapper(value, System.currentTimeMillis() + effectiveTime);
     }
 
-    @NonNull
+    @Override
+    public void putNotify(String key) {
+        if (key == null) return;
+        TransactionSupport.afterCommit(() -> {
+            manager.evictDependents(name, key);
+            manager.evictNotify(name, key);
+        });
+    }
+
     @Override
     public void expire(long now) {
         if (effectiveTime == 0) return;
+        if (store.isEmpty()) return;
         long oldSize = store.size();
-        if (oldSize == 0) return;
         long t = System.currentTimeMillis();
-        store.entrySet().removeIf(entry -> ((BasicCacheValueWrapper) entry.getValue()).getValidTime() < now);
+        store.forEach((key, ignored) -> store.computeIfPresent(key, (k, current) -> {
+            if (!(current instanceof BasicCacheValueWrapper)) return null;
+            return ((BasicCacheValueWrapper) current).getValidTime() <= now ? null : current;
+        }));
         log.debug("{} > {} expire {}ms", oldSize, store.size(), System.currentTimeMillis() - t);
     }
 
     @Override
     public void evict(Object key) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    String str = String.valueOf(key);
-                    doEvict(str);
-                    evictNotify(str);
-                }
-            });
-        } else {
-            String str = String.valueOf(key);
+        String str = String.valueOf(key);
+        TransactionSupport.afterCommit(() -> {
             doEvict(str);
+            manager.evictDependents(name, str);
             evictNotify(str);
-        }
+        });
     }
 
     public void onlyEvict(String key) {
@@ -168,53 +213,57 @@ public class BasicCache implements PolarBearCache {
 
     private void doEvict(String key) {
         log.debug("doEvict name:{} key:{}", name, key);
+        ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
         Pattern pattern = CacheKeyUtil.getPattern(key);
         if (pattern == null) {
-            remove(key);
+            remove(targetStore, key);
         }else{
-            for (Object k : store.keySet()) {
+            for (Object k : targetStore.keySet()) {
                 String keyStr = k.toString();
                 if (pattern.matcher(keyStr).find()) {
-                    remove(keyStr);
+                    remove(targetStore, keyStr);
                 }
             }
         }
-        manager.evictDependents(name, key);
     }
 
-    protected void remove(String key) {
-        Object value = null;
+    private void remove(ConcurrentMap<String, Cache.ValueWrapper> targetStore, String key) {
         BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
-        if (evictHandler != null) {
-            Cache.ValueWrapper wrapper = store.get(key);
-            if (wrapper != null) {
-                value = wrapper.get();
-            }
-            value = evictHandler.apply(key, value);
+        if (evictHandler == null) {
+            targetStore.remove(key);
+            return;
         }
-        if (value == null) {
-            log.debug("evict remove name:{} key:{}", name, key);
-            store.remove(key);
+        reload(targetStore, key, targetStore.get(key), evictHandler);
+    }
+
+    private void reload(
+            ConcurrentMap<String, Cache.ValueWrapper> targetStore, String key,
+            Cache.ValueWrapper expected, BiFunction<String, Object, Object> handler
+    ) {
+        Cache.ValueWrapper replacement = null;
+        try {
+            Object value = handler.apply(key, expected == null ? null : expected.get());
+            if (value != null) replacement = createValueWrapper(value);
+        } catch (Exception e) {
+            log.warn("Cache reload failed, invalidating {} key:{}", name, key, e);
+        }
+        // Apply only to the observed entry in the original storage generation.
+        if (replacement == null) {
+            if (expected != null) targetStore.remove(key, expected);
+        } else if (expected == null) {
+            targetStore.putIfAbsent(key, replacement);
         } else {
-            log.debug("evict put name:{} key:{}", name, key);
-            store.put(key, createValueWrapper(value));
+            targetStore.replace(key, expected, replacement);
         }
     }
 
     @Override
     public void clear() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    doClear();
-                    manager.clearNotify(name);
-                }
-            });
-        } else {
+        TransactionSupport.afterCommit(() -> {
             doClear();
+            manager.clearDependents(name);
             manager.clearNotify(name);
-        }
+        });
     }
 
     public void onlyClear() {
@@ -222,22 +271,15 @@ public class BasicCache implements PolarBearCache {
     }
 
     private void doClear() {
+        ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
         BiFunction<String, Object, Object> evictHandler = manager.getEvictHandler(name);
         if (evictHandler == null) {
-            store.clear();
+            targetStore.clear();
         } else {
-            for (Iterator<Map.Entry<String, ValueWrapper>> it = store.entrySet().iterator(); it.hasNext(); ) {
-                Map.Entry<String, ValueWrapper> entry = it.next();
-                Object value = evictHandler.apply(entry.getKey(), entry.getValue().get());
-                if (value == null) {
-                    it.remove();
-                } else {
-                    entry.setValue(createValueWrapper(value));
-                }
-            }
+            targetStore.forEach((key, expected) -> reload(targetStore, key, expected, evictHandler));
         }
         manager.dispatchClear(name);
-        manager.clearDependents(name);
         log.debug("clear name:{}", name);
     }
+
 }

@@ -48,8 +48,6 @@ public interface PolarBearCacheManager extends CacheManager {
 
     void clearDependents(String name);
 
-    boolean isMe(CacheManager cacheManager);
-
     <T> void onEvict(String cacheName, BiFunction<String, T, T> handler);
 
     void onClear(String cacheName, Runnable runnable);
