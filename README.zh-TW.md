@@ -99,7 +99,7 @@ public User find(Long id) {
 
 ### 交易行為
 
-當 Spring transaction synchronization 啟用時，`put`、`putIfAbsent`、`evict`、`clear` 及 `putNotify` 的變更／通知會延後至 afterCommit 執行；未啟用時立即執行。交易中的 `putIfAbsent` 不保證回傳時資料已寫入。
+Manager 建立繼承 `BasicCache` 的 `TransactionCache`。當 Spring transaction synchronization 啟用時，`put`、`evict`、`clear` 及 `putNotify` 會延後至 afterCommit 執行；未啟用時立即執行。與 Spring 相同，`putIfAbsent` 即使在交易中也立即執行，rollback 不會撤銷寫入。`BasicCache` 本身一律立即執行操作。
 
 `@Cacheable(sync = true)` 使用的 `get(key, Callable)` 會原子載入並立即快取，rollback 不會撤銷該值。呼叫端必須自行避免快取未 commit 的資料；本元件不提供交易隔離。
 

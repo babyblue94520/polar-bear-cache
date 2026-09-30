@@ -99,7 +99,7 @@ The fully qualified name is `pers.clare.polarbearcache.annotation.CacheAlive`. D
 
 ### Transaction behavior
 
-When Spring transaction synchronization is active, mutations and notifications from `put`, `putIfAbsent`, `evict`, `clear`, and `putNotify` are deferred until `afterCommit`. Otherwise, they execute immediately. Within a transaction, `putIfAbsent` does not guarantee that the value has been stored when the method returns.
+The manager creates `TransactionCache`, which extends `BasicCache`. When Spring transaction synchronization is active, `put`, `evict`, `clear`, and `putNotify` are deferred until `afterCommit`; otherwise they execute immediately. As with Spring, `putIfAbsent` executes immediately, including inside a transaction, and rollback does not undo it. `BasicCache` itself always executes operations immediately.
 
 The `get(key, Callable)` method used by `@Cacheable(sync = true)` loads atomically and caches immediately. A rollback does not undo that cached value. Callers must avoid caching uncommitted data; this library does not provide transaction isolation.
 

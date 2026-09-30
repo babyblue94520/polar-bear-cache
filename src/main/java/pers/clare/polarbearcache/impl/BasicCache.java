@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import pers.clare.polarbearcache.PolarBearCache;
 import pers.clare.polarbearcache.support.CacheKeyUtil;
-import pers.clare.polarbearcache.support.TransactionSupport;
 
 import java.util.Collections;
 import java.util.concurrent.Callable;
@@ -138,7 +137,7 @@ public class BasicCache implements PolarBearCache {
         String strKey = String.valueOf(key);
         if (!manager.isCacheable()) return;
         ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
-        TransactionSupport.afterCommit(() -> targetStore.put(strKey, createValueWrapper(value)));
+        targetStore.put(strKey, createValueWrapper(value));
     }
 
     @Override
@@ -154,14 +153,14 @@ public class BasicCache implements PolarBearCache {
 
         AtomicReference<Cache.ValueWrapper> existing = new AtomicReference<>();
         ConcurrentMap<String, Cache.ValueWrapper> targetStore = store;
-        TransactionSupport.afterCommit(() -> targetStore.compute(strKey, (k, wrapper) -> {
+        targetStore.compute(strKey, (k, wrapper) -> {
             BasicCacheValueWrapper valid = getValidValue(wrapper);
             if (valid != null) {
                 existing.set(valid);
                 return valid;
             }
             return createValueWrapper(value);
-        }));
+        });
         return existing.get();
     }
 
@@ -173,10 +172,8 @@ public class BasicCache implements PolarBearCache {
     @Override
     public void putNotify(String key) {
         if (key == null) return;
-        TransactionSupport.afterCommit(() -> {
-            manager.evictDependents(name, key);
-            manager.evictNotify(name, key);
-        });
+        manager.evictDependents(name, key);
+        manager.evictNotify(name, key);
     }
 
     @Override
@@ -195,11 +192,9 @@ public class BasicCache implements PolarBearCache {
     @Override
     public void evict(Object key) {
         String str = String.valueOf(key);
-        TransactionSupport.afterCommit(() -> {
-            doEvict(str);
-            manager.evictDependents(name, str);
-            evictNotify(str);
-        });
+        doEvict(str);
+        manager.evictDependents(name, str);
+        evictNotify(str);
     }
 
     public void onlyEvict(String key) {
@@ -259,11 +254,9 @@ public class BasicCache implements PolarBearCache {
 
     @Override
     public void clear() {
-        TransactionSupport.afterCommit(() -> {
-            doClear();
-            manager.clearDependents(name);
-            manager.clearNotify(name);
-        });
+        doClear();
+        manager.clearDependents(name);
+        manager.clearNotify(name);
     }
 
     public void onlyClear() {

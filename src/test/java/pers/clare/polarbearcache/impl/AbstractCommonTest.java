@@ -1,6 +1,7 @@
 package pers.clare.polarbearcache.impl;
 
 import org.junit.jupiter.api.*;
+import pers.clare.polarbeartest.cache.CacheEventServiceImpl;
 import pers.clare.polarbeartest.cache.CacheType;
 import pers.clare.polarbeartest.service.AbstractSimpleUserService;
 import pers.clare.polarbeartest.service.AbstractUserService;
@@ -38,13 +39,9 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
     abstract protected CacheType getType();
 
 
+    @BeforeEach
     void waitingNotice() {
-        // waiting all notice
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        CacheEventServiceImpl.awaitNotifications();
     }
 
     User create() {
@@ -367,7 +364,7 @@ abstract class AbstractCommonTest<UserService extends AbstractUserService, Simpl
             if (instance == userService) {
                 assertSame(modifyUser, instance.find(user.getId()));
             } else {
-                assertNotSame(user, instance.find(user.getId()));
+                assertNotSame(map.get(instance), instance.find(user.getId()));
             }
         }
 

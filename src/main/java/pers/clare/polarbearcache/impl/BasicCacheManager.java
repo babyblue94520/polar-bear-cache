@@ -7,13 +7,14 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.cache.Cache;
 import org.springframework.lang.Nullable;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.clare.polarbearcache.*;
 import pers.clare.polarbearcache.event.EventDataCodec;
 import pers.clare.polarbearcache.event.EventSenderQueue;
 import pers.clare.polarbearcache.proccessor.CacheAliveConfig;
 import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
 import pers.clare.polarbearcache.support.CacheDependency;
-import pers.clare.polarbearcache.support.TransactionSupport;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -99,7 +100,7 @@ public class BasicCacheManager implements
             effectiveTime = config.getEffectiveTime();
             extension = config.isExtension();
         }
-        return new BasicCache(this, name, effectiveTime, extension);
+        return new TransactionCache(this, name, effectiveTime, extension);
     }
 
     @Override
@@ -198,10 +199,18 @@ public class BasicCacheManager implements
      * Clear all cache data and publish clear all event
      */
     public void clear() {
-        TransactionSupport.afterCommit(() -> {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    onlyClear();
+                    clearAllNotify();
+                }
+            });
+        } else {
             onlyClear();
             clearAllNotify();
-        });
+        }
     }
 
     /**

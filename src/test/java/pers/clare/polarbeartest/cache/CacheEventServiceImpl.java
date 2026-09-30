@@ -21,6 +21,18 @@ public class CacheEventServiceImpl implements PolarBearCacheEventService {
         executor.submit(() -> listeners.forEach(consumer -> consumer.accept(body)));
     }
 
+    public static void awaitNotifications() {
+        try {
+            // A barrier on the single worker waits for all previously queued events.
+            executor.submit(() -> {}).get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for cache notifications", e);
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            throw new AssertionError("Cache notifications did not finish", e);
+        }
+    }
+
     @Override
     public void addListener( Consumer<String> listener) {
         listeners.add(listener);
