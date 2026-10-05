@@ -11,13 +11,13 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pers.clare.polarbearcache.*;
 import pers.clare.polarbearcache.event.EventDataCodec;
-import pers.clare.polarbearcache.event.EventSenderQueue;
 import pers.clare.polarbearcache.proccessor.CacheAliveConfig;
 import pers.clare.polarbearcache.proccessor.CacheAnnotationFactory;
 import pers.clare.polarbearcache.support.CacheDependency;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -32,7 +32,17 @@ public class BasicCacheManager implements
 
     protected final ConcurrentMap<String, PolarBearCache> cacheMap = new ConcurrentHashMap<>(16);
 
-    private final EventSenderQueue senderQueue = new EventSenderQueue();
+    private static final String EVENT_PREFIX = "~pbc1~\n";
+    private final String senderId = UUID.randomUUID().toString();
+    private final ConcurrentMap<String, FailedNotification> failedNotifications = new ConcurrentHashMap<>();
+
+    private static final class FailedNotification {
+        final String message;
+
+        FailedNotification(String message) {
+            this.message = message;
+        }
+    }
 
     private final CacheAnnotationFactory cacheAnnotationFactory;
 
@@ -46,8 +56,8 @@ public class BasicCacheManager implements
     private final PolarBearCacheEventService eventService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    private long invalidationVersion;
-    private boolean disconnected;
+    private volatile long invalidationVersion;
+    private final AtomicBoolean recoveryActive = new AtomicBoolean();
 
     public BasicCacheManager(
             CacheAnnotationFactory cacheAnnotationFactory
@@ -71,6 +81,10 @@ public class BasicCacheManager implements
     public void run(String... args) {
         long delay = 60000;
         executor.scheduleWithFixedDelay(this::expire, delay, delay, TimeUnit.MILLISECONDS);
+        if (eventService != null) {
+            long retryDelay = properties.getNotificationRetryInterval().toMillis();
+            executor.scheduleWithFixedDelay(this::retryNotifications, retryDelay, retryDelay, TimeUnit.MILLISECONDS);
+        }
     }
 
     @Override
@@ -138,17 +152,7 @@ public class BasicCacheManager implements
      * Publish event
      */
     public void evictNotify(String name, String key) {
-        if (eventService == null) return;
-        Object marker = senderQueue.add(name, key);
-        try {
-            eventService.send(EventDataCodec.encode(name) + "\n" + EventDataCodec.encode(key));
-        } catch (RuntimeException e) {
-            senderQueue.remove(marker, name, key);
-            log.error(e.getMessage(), e);
-        } catch (Exception e) {
-            senderQueue.remove(marker, name, key);
-            throw e;
-        }
+        publish(EventDataCodec.encode(name) + "\n" + EventDataCodec.encode(key));
     }
 
     /**
@@ -182,17 +186,7 @@ public class BasicCacheManager implements
      */
     @Override
     public void clearNotify(String name) {
-        if (eventService == null) return;
-        Object marker = senderQueue.add(name);
-        try {
-            eventService.send(EventDataCodec.encode(name));
-        } catch (RuntimeException e) {
-            senderQueue.remove(marker, name);
-            log.error(e.getMessage(), e);
-        } catch (Exception e) {
-            senderQueue.remove(marker, name);
-            throw e;
-        }
+        publish(EventDataCodec.encode(name));
     }
 
     /**
@@ -229,16 +223,37 @@ public class BasicCacheManager implements
      * Publish clear all event
      */
     public void clearAllNotify() {
+        publish("");
+    }
+
+    private void publish(String body) {
         if (eventService == null) return;
-        Object marker = senderQueue.add();
+        String message = EVENT_PREFIX + senderId + "\n" + body;
+        attemptNotification(body, message, failedNotifications.get(body));
+    }
+
+    private boolean attemptNotification(String body, String message, FailedNotification previous) {
+        if (eventService == null) return true;
         try {
-            eventService.send("");
+            eventService.send(message);
+            // Remove only the record observed before sending, never a newer failure.
+            if (previous != null) failedNotifications.remove(body, previous);
+            return true;
         } catch (RuntimeException e) {
-            senderQueue.remove(marker);
-            log.error(e.getMessage(), e);
-        } catch (Exception e) {
-            senderQueue.remove(marker);
-            throw e;
+            // Each failure gets a fresh identity, including failures of the same retry.
+            failedNotifications.put(body, new FailedNotification(message));
+            log.error("Cache notification failed; retained for retry", e);
+            return false;
+        }
+    }
+
+    void retryNotifications() {
+        for (Map.Entry<String, FailedNotification> entry : failedNotifications.entrySet()) {
+            String body = entry.getKey();
+            FailedNotification pending = entry.getValue();
+            if (failedNotifications.get(body) == pending) {
+                if (!attemptNotification(body, pending.message, pending)) return;
+            }
         }
     }
 
@@ -349,40 +364,63 @@ public class BasicCacheManager implements
         return evictHandlers.get(name);
     }
 
-    public synchronized boolean isCacheable() {
+    public boolean isCacheable() {
         if (eventService == null) return true;
-        if (!eventService.isAvailable()) {
-            disconnected = true;
-            return false;
-        }
+        if (!eventService.isAvailable()) return false;
         long version = eventService.getInvalidationVersion();
-        if (disconnected || version != invalidationVersion) {
+        if (version == invalidationVersion) return true;
+        return recoverCache();
+    }
+
+    private boolean recoverCache() {
+        if (eventService == null) return true;
+        if (!recoveryActive.compareAndSet(false, true)) return false;
+        try {
+            if (!eventService.isAvailable()) return false;
+            long version = eventService.getInvalidationVersion();
+            if (version == invalidationVersion) return true;
             // Discard stale data directly: eviction handlers can repopulate it.
             for (PolarBearCache cache : cacheMap.values()) {
                 if (cache instanceof BasicCache) ((BasicCache) cache).discardStorage();
                 else cache.onlyClear();
             }
+            // The event service increments its version on every possible outage.
+            if (!eventService.isAvailable() || eventService.getInvalidationVersion() != version) return false;
             invalidationVersion = version;
-            disconnected = false;
+            return true;
+        } finally {
+            recoveryActive.set(false);
         }
-        return true;
     }
 
     void receive(String data) {
+        if (data != null && data.startsWith(EVENT_PREFIX)) {
+            int end = data.indexOf('\n', EVENT_PREFIX.length());
+            if (end < 0) return;
+            String origin = data.substring(EVENT_PREFIX.length(), end);
+            try {
+                if (!UUID.fromString(origin).toString().equals(origin)) return;
+            } catch (IllegalArgumentException e) {
+                return;
+            }
+            if (senderId.equals(origin)) return;
+            data = data.substring(end + 1);
+        }
+        // Legacy notifications have no origin and are always treated as remote.
         if (data == null || data.isEmpty()) {
-            if (!senderQueue.poll()) onlyClear();
+            onlyClear();
             return;
         }
 
         int separator = data.indexOf('\n');
         if (separator < 0) {
             String name = EventDataCodec.decode(data);
-            if (!senderQueue.poll(name)) onlyClear(name);
+            onlyClear(name);
             return;
         }
 
         String name = EventDataCodec.decode(data.substring(0, separator));
         String key = EventDataCodec.decode(data.substring(separator + 1));
-        if (!senderQueue.poll(name, key)) onlyEvict(name, key);
+        onlyEvict(name, key);
     }
 }

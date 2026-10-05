@@ -120,7 +120,7 @@ public interface PolarBearCacheEventService {
 
 ### 實作契約
 
-1. `send` 將 body 原樣廣播給相同快取群組的所有實例，包含發送端自己的 listener。manager 會記錄本地發送標記，以略過自己的回送事件。
+1. `send` 將 body 原樣廣播給相同快取群組的所有實例，包含發送端自己的 listener。每個 manager 建立時產生一次 UUID v4，通知攜帶該來源 ID；接收時比對 ID，略過自己的回送事件（包含延遲或重複回送）。
 2. `addListener` 註冊接收回呼，訊息 body 必須保持完整。不要把同一群組配置成只有其中一個實例能收到的競爭消費模式。
 3. `isAvailable` 只有在事件發送與訂閱都可正常使用時才回傳 true。中斷期間，BasicCache 的讀取繞過快取，寫入也不會建立一般快取資料。
 4. `getInvalidationVersion` 必須 thread-safe，並在可能漏掉事件時遞增。必須先更新版本，再讓恢復的連線對外回報 available。
@@ -159,6 +159,21 @@ public long getInvalidationVersion() {
 manager 在恢復後的快取存取中檢查版本，替換 BasicCache 的 storage，丟棄未被讀取的舊值。此動作不廣播、不執行 reload handler，也不觸發一般 `onClear` 回呼。先前捕捉舊 storage 的延後寫入與 reload 結果不會寫入新的 storage。
 
 通知是非同步失效機制，傳遞延遲、遺失及發送失敗仍需由 transport 的可靠性設計處理；本元件不保證跨服務的強一致性，也不內建持久化事件重試。
+
+### 失敗通知重送
+
+通知格式為 `~pbc1~\n<sender UUID>\n<原始失效內容>`。重送沿用相同 UUID 與內容，不再使用 `senderQueue` 或回送標記期限。接收端仍接受舊格式，並將其視為遠端通知；舊版接收端無法解析新格式，因此同一群組需協調升級，不能直接混用新舊版本。UUID 僅用於辨識來源，不是驗證身分的機制。
+
+`send()` 拋出 `RuntimeException` 時，manager 會在記憶體保留通知，預設每 5 秒執行一批重送。可指定間隔（至少 1ms）：
+
+```yaml
+polar-bear-cache:
+  notification-retry-interval: 5s
+```
+
+相同訊息內容只保留一筆紀錄：單 key 失效、指定 cache 清除、全部清除分別比對。發送在 Map 鎖外執行，只有失敗才新增或替換紀錄。重送或中途相同通知成功時，只條件式移除發送前看到的那筆紀錄，不會刪掉期間新增的失敗；不同通知成功不會取消它。每次失敗都建立新紀錄，包含重送失敗。併發時可能額外重送，或在成功後因另一個尚未完成的發送失敗而再次留下紀錄；每批重送遇到第一筆失敗就停止，失敗與尚未處理的紀錄保留到下一個間隔再試，已成功的紀錄照常移除。adapter 應支援並行發送並設定逾時。
+
+間隔從上一批重送完成後起算，與過期清理共用背景執行緒；manager 關閉時停止排程。紀錄不持久化，程序重啟會遺失，長期故障時不同通知的紀錄可能持續增加。`send()` 正常返回即視為成功，無法偵測返回後的非同步失敗或接收端漏收；adapter 必須在可偵測的發送失敗時拋出例外，仍建議以固定 TTL 保底。
 
 ### 多個 manager
 
@@ -249,6 +264,63 @@ cacheManager.onlyClear();             // 僅本地清除所有快取
 
 ## 架構圖
 
+### 分散式本地快取架構
+
+各服務實例保有自己的本地快取，共用資料來源；訊息系統只廣播失效通知，不傳送快取值。
+
+```mermaid
+flowchart TB
+    Client["用戶端"] --> LB["負載平衡器"]
+
+    subgraph A["服務實例 A"]
+        SA["Service / Spring Cache"]
+        CA["Local Cache A"]
+        MA["Cache Manager A<br/>獨立 UUID"]
+        EA["Event Service Adapter A"]
+        RA["失敗通知紀錄<br/>定時重送"]
+        SA -->|讀取| CA
+        SA -->|未命中後回填| CA
+        SA -->|異動後觸發快取操作，交易中延後至 commit| MA
+        MA -->|失效與依賴清除| CA
+        MA -->|發送通知| EA
+        EA -->|發送失敗| RA
+        RA -->|依設定間隔重送| EA
+        EA -->|接收通知| MA
+    end
+
+    subgraph B["服務實例 B"]
+        SB["Service / Spring Cache"]
+        CB["Local Cache B"]
+        MB["Cache Manager B<br/>獨立 UUID"]
+        EB["Event Service Adapter B"]
+        RB["失敗通知紀錄<br/>定時重送"]
+        SB -->|讀取| CB
+        SB -->|未命中後回填| CB
+        SB -->|異動後觸發快取操作，交易中延後至 commit| MB
+        MB -->|失效與依賴清除| CB
+        MB -->|發送通知| EB
+        EB -->|發送失敗| RB
+        RB -->|依設定間隔重送| EB
+        EB -->|接收通知| MB
+    end
+
+    LB --> SA
+    LB --> SB
+    DB[("共用資料庫")]
+    MQ["MQ 廣播通道<br/>只傳送失效通知"]
+    SA -->|未命中時查詢 / 寫入資料| DB
+    SB -->|未命中時查詢 / 寫入資料| DB
+    EA -->|發布| MQ
+    EB -->|發布| MQ
+    MQ -->|廣播| EA
+    MQ -->|廣播| EB
+```
+
+- 讀取命中本地快取就回傳；未命中則查資料庫，符合快取條件時回填本地。
+- 異動先處理本地快取，再通知其他實例清除失效資料。manager 會略過自己 UUID 的通知，接收端也不會再次廣播。失敗紀錄由 manager 管理；發送成功時條件式移除先前紀錄，每批重送遇到第一筆失敗就停止。
+- 事件服務不可用時繞過快取；恢復後依失效版本丟棄舊的本地 storage。
+- 圖中呈現失效處理路徑；`@CachePut` 會在本地寫入回傳值，reload handler 也可重新載入而非移除資料。通知傳遞有延遲，各實例可能短暫讀到不同版本，不保證強一致性。
+
 ### 本地讀取
 
 ```mermaid
@@ -301,11 +373,11 @@ sequenceDiagram
     Note over A,CA: 啟用交易同步時，下列動作延後至 afterCommit
     CA->>CA: 本地失效並處理依賴
     Note over CA: 若有 reload handler，嘗試更新或移除舊值
-    CA->>CA: 記錄本地發送標記
+    CA->>CA: 附上 manager UUID
     CA->>MQ: 發送失效事件
     par 回送至服務 A
         MQ-->>CA: 接收事件
-        CA->>CA: 消耗匹配標記，略過自身回送
+        CA->>CA: 比對來源 UUID，略過自身回送
     and 廣播至服務 B
         MQ-->>CB: 接收事件
         CB->>CB: onlyEvict / onlyClear 並處理依賴

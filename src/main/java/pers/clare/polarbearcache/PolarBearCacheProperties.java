@@ -18,6 +18,21 @@ public class PolarBearCacheProperties {
 
     private long effectiveTime = 0;
 
+    /** Fixed delay between failed notification retry batches. */
+    private Duration notificationRetryInterval = Duration.ofSeconds(5);
+
+    public Duration getNotificationRetryInterval() {
+        return notificationRetryInterval;
+    }
+
+    public PolarBearCacheProperties setNotificationRetryInterval(Duration interval) {
+        if (interval == null || interval.isNegative() || interval.toMillis() < 1) {
+            throw new IllegalArgumentException("notificationRetryInterval must be at least 1ms");
+        }
+        this.notificationRetryInterval = interval;
+        return this;
+    }
+
     public Duration getDuration() {
         return duration;
     }

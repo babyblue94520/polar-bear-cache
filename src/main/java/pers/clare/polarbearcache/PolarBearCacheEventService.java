@@ -8,6 +8,8 @@ public interface PolarBearCacheEventService {
 
     /**
      * Send cache eviction events.
+     * Throw a RuntimeException on failure so the manager can retry. A normal
+     * return is treated as success; asynchronous delivery failures are not observed.
      */
     void send( String body);
 

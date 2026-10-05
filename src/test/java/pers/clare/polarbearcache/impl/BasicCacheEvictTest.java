@@ -29,7 +29,7 @@ class BasicCacheEvictTest {
 
         assertNull(manager.getCache("source").get("key"));
         assertNull(manager.getCache("dependent").get("key"));
-        verify(eventService).send("source\nkey");
+        verify(eventService).send(endsWith("\nsource\nkey"));
     }
 
     @Test
@@ -39,7 +39,7 @@ class BasicCacheEvictTest {
 
         manager.evict("source", "key");
 
-        verify(eventService).send("source\nkey");
+        verify(eventService).send(endsWith("\nsource\nkey"));
     }
 
     @Test
@@ -73,7 +73,7 @@ class BasicCacheEvictTest {
 
         assertEquals(1, allEntriesCalls.get());
         assertEquals(1, leafCalls.get());
-        verify(eventService).send("source\nkey");
+        verify(eventService).send(endsWith("\nsource\nkey"));
     }
 
     @Test

@@ -120,7 +120,7 @@ public interface PolarBearCacheEventService {
 
 ### Implementation contract
 
-1. `send` broadcasts the body unchanged to every instance in the same cache group, including the sender's own listener. The manager records local send markers to skip its own echoed events.
+1. `send` broadcasts the body unchanged to every instance in the same cache group, including the sender's own listener. Each manager generates one UUID v4 at construction and includes it as the sender ID. Receivers compare this ID to skip their own events, including delayed or repeated echoes.
 2. `addListener` registers a receive callback. Preserve the complete message body. Do not use competing consumers that deliver an event to only one instance in the group.
 3. `isAvailable` returns true only when both sending and subscribing are operational. During an outage, BasicCache reads bypass the cache, and writes do not populate normal cache entries.
 4. `getInvalidationVersion` must be thread-safe and increment whenever events may have been missed. Update the version before reporting the recovered connection as available.
@@ -159,6 +159,21 @@ public long getInvalidationVersion() {
 On cache access after recovery, the manager checks the version and replaces BasicCache storage, discarding stale values even if they have not been read. This does not broadcast events, run reload handlers, or invoke normal `onClear` callbacks. Deferred writes and reload results that captured the old storage cannot write into the new storage.
 
 Notifications provide asynchronous invalidation. Delivery delays, lost events, and send failures must be addressed by the transport's reliability design. This library does not guarantee strong consistency across services or include persistent event retries.
+
+### Failed notification retries
+
+Notifications use `~pbc1~\n<sender UUID>\n<original invalidation payload>`. Retries retain the same UUID and payload; `senderQueue` and expiring echo markers are no longer used. Receivers still accept legacy messages as remote notifications. Older receivers cannot parse the new format, so coordinate upgrades across the cache group rather than mixing versions. The UUID identifies the sender; it is not authentication.
+
+When `send()` throws a `RuntimeException`, the manager retains the notification in memory and retries pending notifications every 5 seconds by default. Configure the interval (at least 1ms):
+
+```yaml
+polar-bear-cache:
+  notification-retry-interval: 5s
+```
+
+Identical message bodies share one pending record: key eviction, named-cache clearing, and clearing all caches are matched separately. Sends execute outside map locks; only failures create or replace records. A successful retry or intervening send conditionally removes only the record observed before sending, preserving failures recorded in the meantime. Success for a different notification does not cancel it. Every failure creates a fresh record, including retry failures. Concurrent sends may cause extra retries or leave a record after success when another in-flight send subsequently fails. Each retry batch stops at the first failure. Failed and unprocessed records remain pending until the next interval; successful records are removed as usual. Adapters should support concurrent sends and configure timeouts.
+
+The interval starts after the previous retry batch finishes. Retries share the expiration scheduler and stop when the manager shuts down. Records are not persistent, are lost on process restart, and may grow with distinct notifications during prolonged failures. A normal return from `send()` counts as success; later asynchronous failures and missed deliveries are not detected. Adapters must throw on detectable send failures. A fixed TTL remains advisable as a fallback.
 
 ### Multiple managers
 
@@ -249,6 +264,63 @@ The `only*` methods execute immediately without sending notifications. Named man
 
 ## Architecture diagrams
 
+### Distributed local cache architecture
+
+Each service instance owns its local cache and reads from a shared data source. The messaging system broadcasts invalidation notifications, not cached values.
+
+```mermaid
+flowchart TB
+    Client["Client"] --> LB["Load balancer"]
+
+    subgraph A["Service instance A"]
+        SA["Service / Spring Cache"]
+        CA["Local Cache A"]
+        MA["Cache Manager A<br/>Own UUID"]
+        EA["Event Service Adapter A"]
+        RA["Failed notifications<br/>Scheduled retries"]
+        SA -->|Read| CA
+        SA -->|Populate on cache miss| CA
+        SA -->|Cache mutation after commit when transactional| MA
+        MA -->|Invalidate cache and dependencies| CA
+        MA -->|Publish notification| EA
+        EA -->|Send failure| RA
+        RA -->|Retry at configured interval| EA
+        EA -->|Receive notification| MA
+    end
+
+    subgraph B["Service instance B"]
+        SB["Service / Spring Cache"]
+        CB["Local Cache B"]
+        MB["Cache Manager B<br/>Own UUID"]
+        EB["Event Service Adapter B"]
+        RB["Failed notifications<br/>Scheduled retries"]
+        SB -->|Read| CB
+        SB -->|Populate on cache miss| CB
+        SB -->|Cache mutation after commit when transactional| MB
+        MB -->|Invalidate cache and dependencies| CB
+        MB -->|Publish notification| EB
+        EB -->|Send failure| RB
+        RB -->|Retry at configured interval| EB
+        EB -->|Receive notification| MB
+    end
+
+    LB --> SA
+    LB --> SB
+    DB[("Shared database")]
+    MQ["Messaging broadcast channel<br/>Invalidation notifications only"]
+    SA -->|Load on cache miss / Write data| DB
+    SB -->|Load on cache miss / Write data| DB
+    EA -->|Publish| MQ
+    EB -->|Publish| MQ
+    MQ -->|Broadcast| EA
+    MQ -->|Broadcast| EB
+```
+
+- Reads use local cached values when available. Cache misses load from the database and populate the local cache when caching conditions permit.
+- Mutations process the local cache and notify other instances to invalidate their copies. Managers ignore their own UUID and do not rebroadcast received notifications. Retry records belong to the manager; a successful send conditionally removes the prior record, and each retry batch stops at its first failure.
+- When the event service is unavailable, reads bypass the cache. After recovery, a changed invalidation version causes old local storage to be discarded.
+- This diagram shows the invalidation path. `@CachePut` stores the return value locally, and reload handlers can refresh entries instead of removing them. Delivery delays allow instances to temporarily observe different values, so strong consistency is not guaranteed.
+
 ### Local reads
 
 ```mermaid
@@ -301,15 +373,15 @@ sequenceDiagram
     Note over A,CA: With transaction synchronization, the following actions wait until afterCommit
     CA->>CA: Invalidate locally and process dependencies
     Note over CA: If a reload handler exists, attempt to update or remove the old value
-    CA->>CA: Record local send marker
+    CA->>CA: Attach manager UUID
     CA->>MQ: Send invalidation event
     par Echo to Service A
         MQ-->>CA: Receive event
-        CA->>CA: Consume matching marker and skip own echo
+        CA->>CA: Compare sender UUID and skip own echo
     and Broadcast to Service B
         MQ-->>CB: Receive event
         CB->>CB: onlyEvict / onlyClear and process dependencies
-        Note over CB: Local processing only; no further notification
+        Note over CB: Local processing only, no further notification
     end
     A-->>Client: Return result
 ```
@@ -329,7 +401,7 @@ sequenceDiagram
     participant DB as Data Source
 
     Transport-->>Events: Disconnected or events may have been missed
-    Events->>Events: available = false; increment invalidation version
+    Events->>Events: available = false, increment invalidation version
     opt Reads during outage
         Client->>Cache: Read
         Cache->>Manager: isCacheable()
@@ -349,7 +421,7 @@ sequenceDiagram
     Manager->>Cache: Replace managed BasicCache storage
     Note over Manager,Cache: Discard old values without reload, onClear, or broadcast
     Manager-->>Cache: New storage available
-    Cache-->>Client: Cache miss; reload data
+    Cache-->>Client: Cache miss, reload data
 ```
 
 The invalidation version changes even when there are no requests during an outage, allowing accesses after recovery to detect and discard stale cache data.
